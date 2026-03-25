@@ -1,41 +1,30 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import type { User } from '../../lib/auth';
+
+const user = (Astro.locals as any).user as User | undefined;
+const greeting = user ? `Welcome back, ${user.login}` : 'Welcome';
 
 const stats = [
-  { label: 'Models Signed', value: '1,247' },
-  { label: 'Agents Active', value: '892' },
-  { label: 'Migrations', value: '156' },
-  { label: 'CNSA 2.0', value: '78%' },
+  { label: 'Your Models', value: '0', cta: 'Sign your first model', href: '/dashboard/models' },
+  { label: 'Your Agents', value: '0', cta: 'Register an agent', href: '/dashboard/agents' },
+  { label: 'Migrations', value: '0', cta: 'Analyze a repo', href: '/dashboard/migrate' },
+  { label: 'CNSA 2.0', value: 'Not started', cta: 'Check compliance', href: '/dashboard/compliance' },
 ];
-
-const recentActivity = [
-  { action: 'Signature verified', target: 'meta-llama/Llama-3.1-70B', type: 'verified', time: '2m ago' },
-  { action: 'Agent registered', target: 'acme/finance-copilot', type: 'agent', time: '14m ago' },
-  { action: 'Migration complete', target: 'acme/backend-services', type: 'migration', time: '1h ago' },
-  { action: 'Model signed', target: 'mistral/Mixtral-8x22B', type: 'verified', time: '3h ago' },
-  { action: 'HNDL risk updated', target: 'openai/whisper-large-v3', type: 'risk', time: '5h ago' },
-  { action: 'Agent credential renewed', target: 'globex/data-pipeline', type: 'agent', time: '6h ago' },
-  { action: 'Migration started', target: 'globex/api-gateway', type: 'migration', time: '8h ago' },
-];
-
-const riskDistribution = [
-  { level: 'CRITICAL', count: 23, color: 'bg-danger', text: 'text-danger' },
-  { level: 'HIGH', count: 47, color: 'bg-warning', text: 'text-warning' },
-  { level: 'MEDIUM', count: 89, color: 'bg-electric', text: 'text-electric' },
-  { level: 'LOW', count: 134, color: 'bg-quantum', text: 'text-quantum' },
-];
-
-const totalRisk = riskDistribution.reduce((s, r) => s + r.count, 0);
 ---
 
 <DashboardLayout title="Overview">
+  <!-- Greeting -->
+  <p class="text-sm text-gray-400 mb-4">{greeting}</p>
+
   <!-- Compact Stat Bar -->
   <div class="flex items-center gap-px rounded-lg overflow-hidden border border-white/5 mb-5">
     {stats.map((stat, i) => (
-      <div class={`flex-1 bg-navy-800 px-4 py-3 ${i > 0 ? 'border-l border-white/5' : ''}`}>
+      <a href={stat.href} class={`flex-1 bg-navy-800 px-4 py-3 hover:bg-navy-700 transition-colors group ${i > 0 ? 'border-l border-white/5' : ''}`}>
         <p class="text-lg font-semibold text-white font-mono leading-none">{stat.value}</p>
         <p class="text-xs text-gray-500 mt-1">{stat.label}</p>
-      </div>
+        <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stat.cta}</p>
+      </a>
     ))}
   </div>
 
@@ -48,10 +37,10 @@ const totalRisk = riskDistribution.reduce((s, r) => s + r.count, 0);
       Register Agent
     </a>
     <a href="/dashboard/migrate" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
-      Run Migration
+      Analyze Repo
     </a>
-    <a href="/dashboard/compliance" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
-      Compliance
+    <a href="/models" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
+      View Marketplace
     </a>
   </div>
 
@@ -60,51 +49,42 @@ const totalRisk = riskDistribution.reduce((s, r) => s + r.count, 0);
     <div class="lg:col-span-3 rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
       <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
         <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</h2>
-        <span class="text-xs text-gray-600">{recentActivity.length} events</span>
       </div>
-      <table class="w-full text-xs">
-        <thead>
-          <tr class="border-b border-white/5 text-gray-500">
-            <th class="text-left font-medium px-4 py-2">Time</th>
-            <th class="text-left font-medium px-4 py-2">Action</th>
-            <th class="text-left font-medium px-4 py-2">Target</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recentActivity.map((item, i) => (
-            <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-              <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{item.time}</td>
-              <td class="px-4 py-2 text-gray-300">{item.action}</td>
-              <td class="px-4 py-2">
-                <span class="font-mono text-gray-400">{item.target}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div class="px-4 py-10 text-center">
+        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 mx-auto mb-3">
+          <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
+        <p class="text-sm text-gray-400 mb-1">No activity yet</p>
+        <p class="text-xs text-gray-600 max-w-xs mx-auto">Start by signing a model or registering an agent. Your verification history will appear here.</p>
+        <div class="flex items-center justify-center gap-2 mt-4">
+          <a href="/dashboard/models" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+            Sign a Model
+          </a>
+          <a href="/dashboard/agents" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+            Register an Agent
+          </a>
+        </div>
+      </div>
     </div>
 
     <!-- HNDL Risk Distribution -->
     <div class="rounded-lg border border-white/5 bg-navy-800">
       <div class="px-4 py-2.5 border-b border-white/5">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk</h2>
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your HNDL Risk</h2>
       </div>
-      <div class="p-4 space-y-3">
-        {riskDistribution.map((item) => (
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-xs text-gray-500">{item.level}</span>
-              <span class={`text-xs font-mono font-medium ${item.text}`}>{item.count}</span>
-            </div>
-            <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
-              <div class={`h-full rounded-full ${item.color}`} style={`width: ${(item.count / totalRisk) * 100}%`} />
-            </div>
+      <div class="px-4 py-10 text-center">
+        <div class="relative h-20 w-20 mx-auto mb-3">
+          <svg class="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" stroke-width="5" class="text-white/5" />
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-lg font-bold text-gray-600 font-mono">--</span>
           </div>
-        ))}
-        <div class="pt-3 border-t border-white/5 flex items-center justify-between">
-          <span class="text-xs text-gray-500">Total</span>
-          <span class="text-xs font-mono text-gray-300">{totalRisk}</span>
         </div>
+        <p class="text-xs text-gray-500">No models analyzed yet</p>
+        <a href="/dashboard/models" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors mt-3">
+          Analyze Risk
+        </a>
       </div>
     </div>
   </div>

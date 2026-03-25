@@ -8,6 +8,9 @@ export const SITE = {
 };
 
 export const NAV_ITEMS = [
+  { label: 'Models', href: '/models' },
+  { label: 'Agents', href: '/agents' },
+  { label: 'Explore', href: '/explore' },
   { label: 'Features', href: '/features' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Docs', href: '/docs' },
@@ -16,10 +19,11 @@ export const NAV_ITEMS = [
 
 export const DASHBOARD_NAV = [
   { label: 'Overview', href: '/dashboard', icon: 'grid' },
-  { label: 'Models', href: '/dashboard/models', icon: 'box' },
+  { label: 'Your Models', href: '/dashboard/models', icon: 'box' },
   { label: 'Agents', href: '/dashboard/agents', icon: 'bot' },
   { label: 'Migrate', href: '/dashboard/migrate', icon: 'arrow-right-left' },
   { label: 'Compliance', href: '/dashboard/compliance', icon: 'shield-check' },
+  { label: 'Marketplace', href: '/models', icon: 'store' },
   { label: 'Settings', href: '/dashboard/settings', icon: 'settings' },
 ] as const;
 

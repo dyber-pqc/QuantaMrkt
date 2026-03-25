@@ -1,23 +1,86 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import type { User } from '../../lib/auth';
 
-const apiKey = {
-  name: 'Production Key',
-  key: 'qmkt_live_a3f2...7k9x',
-  created: '2026-02-01',
-  lastUsed: '2026-03-25',
-};
-
-const identity = {
-  did: 'did:web:acme.corp:users:john.doe',
-  algorithm: 'ML-DSA-65',
-  created: '2026-01-15T10:00:00Z',
-  fingerprint: 'QmT5...x9r2',
-};
+const user = (Astro.locals as any).user as User | undefined;
+const apiKeyPreview = user ? `qm_${user.login}_...a3f2k9` : 'qm_user_...a3f2k9';
+const tierLabel = user?.tier || 'free';
+const isFreeTier = tierLabel === 'free';
 ---
 
 <DashboardLayout title="Settings">
   <div class="max-w-2xl space-y-5">
+    <!-- Profile -->
+    <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-white/5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Profile</h2>
+      </div>
+      <div class="p-4">
+        <div class="flex items-center gap-4 mb-4">
+          {user?.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              alt={user.login}
+              class="h-14 w-14 rounded-full border border-white/10"
+            />
+          ) : (
+            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-electric/20 text-xl font-bold text-electric">
+              U
+            </div>
+          )}
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-white">{user?.name || 'User'}</p>
+            <p class="text-xs text-gray-400 font-mono">@{user?.login || 'anonymous'}</p>
+            {user?.email && <p class="text-xs text-gray-500 mt-0.5">{user.email}</p>}
+          </div>
+        </div>
+        <div class="divide-y divide-white/[0.03]">
+          <div class="flex items-center justify-between py-2">
+            <span class="text-xs text-gray-500">User ID</span>
+            <span class="font-mono text-xs text-gray-400">{user?.id || '--'}</span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-xs text-gray-500">Login</span>
+            <span class="font-mono text-xs text-gray-300">@{user?.login || 'anonymous'}</span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-xs text-gray-500">Email</span>
+            <span class="text-xs text-gray-300">{user?.email || 'Not set'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tier -->
+    <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-white/5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Plan</h2>
+      </div>
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${
+              tierLabel === 'enterprise' ? 'bg-electric/15 text-electric' :
+              tierLabel === 'team' ? 'bg-quantum/15 text-quantum' :
+              tierLabel === 'pro' ? 'bg-warning/15 text-warning' :
+              'bg-white/10 text-gray-300'
+            }`}>
+              {tierLabel}
+            </span>
+            <span class="text-xs text-gray-500">plan</span>
+          </div>
+          {isFreeTier && (
+            <a href="/pricing" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
+              Upgrade
+            </a>
+          )}
+        </div>
+        {isFreeTier && (
+          <p class="text-xs text-gray-500">You're on the free plan. Upgrade to Pro for unlimited verifications and API access.</p>
+        )}
+      </div>
+    </div>
+
     <!-- API Keys -->
     <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
       <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
@@ -28,23 +91,49 @@ const identity = {
       </div>
       <div class="p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-gray-300">{apiKey.name}</span>
+          <span class="text-sm font-medium text-gray-300">Production Key</span>
           <span class="inline-flex items-center gap-1.5 text-xs text-quantum">
             <span class="h-1.5 w-1.5 rounded-full bg-quantum" />
             Active
           </span>
         </div>
         <div class="flex items-center gap-2 mb-2">
-          <code class="flex-1 rounded-md bg-navy-900 px-3 py-1.5 font-mono text-xs text-gray-400 border border-white/5">
-            {apiKey.key}
+          <code id="api-key" class="flex-1 rounded-md bg-navy-900 px-3 py-1.5 font-mono text-xs text-gray-400 border border-white/5">
+            {apiKeyPreview}
           </code>
-          <button class="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-gray-500 hover:bg-white/10 hover:text-white transition-colors" title="Copy to clipboard">
+          <button
+            id="copy-key-btn"
+            class="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-gray-500 hover:bg-white/10 hover:text-white transition-colors"
+            title="Copy to clipboard"
+          >
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
           </button>
         </div>
         <div class="flex gap-4 text-[11px] text-gray-600">
-          <span>Created {apiKey.created}</span>
-          <span>Last used {apiKey.lastUsed}</span>
+          <span>Created on sign-up</span>
+          <span>Last used --</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connected Accounts -->
+    <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-white/5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Connected Accounts</h2>
+      </div>
+      <div class="divide-y divide-white/[0.03]">
+        <div class="flex items-center justify-between px-4 py-3">
+          <div class="flex items-center gap-3">
+            <svg class="h-5 w-5 text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            <div>
+              <p class="text-sm font-medium text-gray-300">GitHub</p>
+              <p class="text-xs text-gray-500 font-mono">@{user?.login || 'not connected'}</p>
+            </div>
+          </div>
+          <span class="inline-flex items-center gap-1.5 text-xs text-quantum">
+            <span class="h-1.5 w-1.5 rounded-full bg-quantum" />
+            Connected
+          </span>
         </div>
       </div>
     </div>
@@ -52,32 +141,13 @@ const identity = {
     <!-- Identity -->
     <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
       <div class="px-4 py-2.5 border-b border-white/5">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Identity</h2>
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">PQC Identity</h2>
       </div>
-      <div class="divide-y divide-white/[0.03]">
-        <div class="flex items-center justify-between px-4 py-2.5">
-          <span class="text-xs text-gray-500">DID</span>
-          <span class="font-mono text-xs text-gray-300">{identity.did}</span>
-        </div>
-        <div class="flex items-center justify-between px-4 py-2.5">
-          <span class="text-xs text-gray-500">Algorithm</span>
-          <span class="font-mono text-xs text-gray-300">{identity.algorithm}</span>
-        </div>
-        <div class="flex items-center justify-between px-4 py-2.5">
-          <span class="text-xs text-gray-500">Fingerprint</span>
-          <span class="font-mono text-xs text-gray-300">{identity.fingerprint}</span>
-        </div>
-        <div class="flex items-center justify-between px-4 py-2.5">
-          <span class="text-xs text-gray-500">Created</span>
-          <span class="text-xs text-gray-300">{new Date(identity.created).toLocaleDateString()}</span>
-        </div>
-      </div>
-      <div class="px-4 py-3 border-t border-white/5 flex gap-2">
-        <button class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-          Rotate Key
-        </button>
-        <button class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-          Export Public Key
+      <div class="px-4 py-10 text-center">
+        <p class="text-xs text-gray-500 mb-1">No PQC identity generated yet</p>
+        <p class="text-[11px] text-gray-600 mb-3">Generate a DID-based PQC keypair for signing models and agent credentials</p>
+        <button class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
+          Generate Identity
         </button>
       </div>
     </div>
@@ -98,4 +168,18 @@ const identity = {
       </div>
     </div>
   </div>
+
+  <script>
+    const btn = document.getElementById('copy-key-btn');
+    const keyEl = document.getElementById('api-key');
+    if (btn && keyEl) {
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(keyEl.textContent?.trim() || '');
+        btn.innerHTML = '<svg class="h-3.5 w-3.5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+        setTimeout(() => {
+          btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
+        }, 2000);
+      });
+    }
+  </script>
 </DashboardLayout>

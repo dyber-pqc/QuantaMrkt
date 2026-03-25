@@ -1,0 +1,301 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+
+const models = [
+  {
+    slug: 'meta-llama-Llama-3.1-70B-Instruct',
+    name: 'Llama-3.1-70B-Instruct',
+    author: 'meta-llama',
+    description: 'Large language model optimized for instruction following and chat, with 70B parameters and 128k context window.',
+    tags: ['Transformer', 'Text Generation', '70B'],
+    verified: true,
+    algorithm: 'ML-DSA-87',
+    risk: 'CRITICAL',
+    riskBadge: 'badge-critical',
+    downloads: '2.4M',
+    likes: 4821,
+    lastVerified: '2026-03-18',
+  },
+  {
+    slug: 'mistralai-Mixtral-8x22B-Instruct-v0.1',
+    name: 'Mixtral-8x22B-Instruct-v0.1',
+    author: 'mistralai',
+    description: 'Sparse mixture-of-experts model with 8 experts of 22B parameters each. Instruction-tuned for dialog.',
+    tags: ['MoE', 'Text Generation', '141B'],
+    verified: true,
+    algorithm: 'ML-DSA-65',
+    risk: 'HIGH',
+    riskBadge: 'badge-high',
+    downloads: '1.8M',
+    likes: 3567,
+    lastVerified: '2026-03-15',
+  },
+  {
+    slug: 'microsoft-Phi-3-medium-128k-instruct',
+    name: 'Phi-3-medium-128k-instruct',
+    author: 'microsoft',
+    description: 'Compact yet powerful language model with 14B parameters and 128k context length. Strong reasoning capabilities.',
+    tags: ['Transformer', 'Text Generation', '14B'],
+    verified: true,
+    algorithm: 'ML-DSA-87',
+    risk: 'MEDIUM',
+    riskBadge: 'badge-medium',
+    downloads: '890K',
+    likes: 2134,
+    lastVerified: '2026-03-05',
+  },
+  {
+    slug: 'stabilityai-stable-diffusion-xl-base-1.0',
+    name: 'stable-diffusion-xl-base-1.0',
+    author: 'stabilityai',
+    description: 'Latent text-to-image diffusion model capable of generating photo-realistic images at 1024x1024 resolution.',
+    tags: ['Diffusion', 'Image Generation', '3.5B'],
+    verified: false,
+    algorithm: null,
+    risk: 'LOW',
+    riskBadge: 'badge-low',
+    downloads: '5.1M',
+    likes: 8923,
+    lastVerified: null,
+  },
+  {
+    slug: 'black-forest-labs-FLUX.1-dev',
+    name: 'FLUX.1-dev',
+    author: 'black-forest-labs',
+    description: 'State-of-the-art text-to-image model with rectified flow transformers. Guidance-distilled variant for fast inference.',
+    tags: ['Flow Matching', 'Image Generation', '12B'],
+    verified: true,
+    algorithm: 'ML-DSA-87',
+    risk: 'MEDIUM',
+    riskBadge: 'badge-medium',
+    downloads: '3.2M',
+    likes: 6741,
+    lastVerified: '2026-03-12',
+  },
+  {
+    slug: 'openai-whisper-large-v3',
+    name: 'whisper-large-v3',
+    author: 'openai',
+    description: 'Automatic speech recognition model trained on 680k hours of multilingual audio. Supports 99 languages.',
+    tags: ['Encoder-Decoder', 'Speech Recognition', '1.5B'],
+    verified: true,
+    algorithm: 'ML-DSA-87',
+    risk: 'MEDIUM',
+    riskBadge: 'badge-medium',
+    downloads: '4.7M',
+    likes: 5329,
+    lastVerified: '2026-03-12',
+  },
+  {
+    slug: 'BAAI-bge-m3',
+    name: 'bge-m3',
+    author: 'BAAI',
+    description: 'Multi-lingual, multi-functionality, multi-granularity text embedding model supporting 100+ languages.',
+    tags: ['Encoder', 'Embeddings', '568M'],
+    verified: true,
+    algorithm: 'ML-DSA-65',
+    risk: 'LOW',
+    riskBadge: 'badge-low',
+    downloads: '1.2M',
+    likes: 1876,
+    lastVerified: '2026-03-10',
+  },
+  {
+    slug: 'thenlper-gte-large',
+    name: 'gte-large',
+    author: 'thenlper',
+    description: 'General text embeddings model for semantic search, clustering, and classification tasks.',
+    tags: ['Encoder', 'Embeddings', '335M'],
+    verified: true,
+    algorithm: 'ML-DSA-44',
+    risk: 'LOW',
+    riskBadge: 'badge-low',
+    downloads: '780K',
+    likes: 943,
+    lastVerified: '2026-02-28',
+  },
+  {
+    slug: 'codellama-CodeLlama-34b-Instruct-hf',
+    name: 'CodeLlama-34b-Instruct-hf',
+    author: 'codellama',
+    description: 'Code-specialized LLM built on Llama 2. Fine-tuned for instruction following with support for code infilling.',
+    tags: ['Transformer', 'Code Generation', '34B'],
+    verified: true,
+    algorithm: 'ML-DSA-87',
+    risk: 'HIGH',
+    riskBadge: 'badge-high',
+    downloads: '1.5M',
+    likes: 2890,
+    lastVerified: '2026-03-08',
+  },
+  {
+    slug: 'bigcode-starcoder2-15b',
+    name: 'starcoder2-15b',
+    author: 'bigcode',
+    description: 'Code LLM trained on The Stack v2 with 600+ programming languages. 16k context window with fill-in-the-middle support.',
+    tags: ['Transformer', 'Code Generation', '15B'],
+    verified: false,
+    algorithm: null,
+    risk: 'MEDIUM',
+    riskBadge: 'badge-medium',
+    downloads: '620K',
+    likes: 1245,
+    lastVerified: null,
+  },
+  {
+    slug: 'liuhaotian-llava-v1.6-34b',
+    name: 'llava-v1.6-34b',
+    author: 'liuhaotian',
+    description: 'Large multimodal model combining vision encoder with language model for visual understanding and reasoning tasks.',
+    tags: ['Multimodal', 'Visual QA', '34B'],
+    verified: true,
+    algorithm: 'ML-DSA-65',
+    risk: 'HIGH',
+    riskBadge: 'badge-high',
+    downloads: '410K',
+    likes: 1567,
+    lastVerified: '2026-03-14',
+  },
+  {
+    slug: 'google-gemma-2-27b-it',
+    name: 'gemma-2-27b-it',
+    author: 'google',
+    description: 'Lightweight open model built from Gemini research. Instruction-tuned with 27B parameters and 8k context.',
+    tags: ['Transformer', 'Text Generation', '27B'],
+    verified: true,
+    algorithm: 'ML-DSA-65',
+    risk: 'HIGH',
+    riskBadge: 'badge-high',
+    downloads: '1.1M',
+    likes: 2456,
+    lastVerified: '2026-03-10',
+  },
+];
+
+const sortOptions = ['Recently Verified', 'Most Downloaded', 'Trending'];
+const riskFilters = ['All', 'Critical', 'High', 'Medium', 'Low'];
+---
+
+<MarketingLayout title="Model Hub" description="Browse PQC-verified AI models in the quantum-safe marketplace">
+  <div class="mx-auto max-w-7xl px-6 py-12">
+    <!-- Hero -->
+    <div class="text-center mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Model Hub</h1>
+      <p class="text-base text-gray-400 max-w-xl mx-auto">Browse PQC-verified AI models. Every signature is quantum-safe.</p>
+    </div>
+
+    <!-- Search -->
+    <div class="max-w-2xl mx-auto mb-8">
+      <div class="relative">
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search models by name, author, or task..."
+          class="w-full rounded-xl border border-white/10 bg-navy-800 pl-12 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+        />
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-500 mr-1">Sort:</span>
+        {sortOptions.map((opt, i) => (
+          <button
+            class={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              i === 0
+                ? 'bg-electric/15 text-electric'
+                : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-500 mr-1">Risk:</span>
+        {riskFilters.map((level, i) => (
+          <button
+            class={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              i === 0
+                ? 'bg-white/10 text-white'
+                : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'
+            }`}
+          >
+            {level}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <!-- Model List -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden divide-y divide-white/[0.04]">
+      {models.map((model) => (
+        <a href={`/models/${model.slug}`} class="flex items-start gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors group">
+          <!-- Author avatar -->
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-gray-400 flex-shrink-0 mt-0.5">
+            {model.author[0].toUpperCase()}
+          </div>
+
+          <!-- Main content -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm font-semibold text-gray-200 group-hover:text-white transition-colors">{model.author}/{model.name}</span>
+              {model.verified ? (
+                <span class="inline-flex items-center gap-1 text-[11px] text-quantum">
+                  <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                  {model.algorithm}
+                </span>
+              ) : (
+                <span class="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                  Unverified
+                </span>
+              )}
+            </div>
+
+            <p class="text-xs text-gray-400 mb-2 line-clamp-1">{model.description}</p>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              {model.tags.map((tag) => (
+                <span class="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">{tag}</span>
+              ))}
+              <span class={model.riskBadge + ' !text-[10px] !px-1.5 !py-0'}>{model.risk}</span>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="hidden sm:flex flex-col items-end gap-1 flex-shrink-0 text-right">
+            <div class="flex items-center gap-3">
+              <span class="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                {model.downloads}
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                {model.likes.toLocaleString()}
+              </span>
+            </div>
+            {model.lastVerified ? (
+              <span class="text-[10px] text-gray-600">Verified {model.lastVerified}</span>
+            ) : (
+              <span class="text-[10px] text-gray-700">Not verified</span>
+            )}
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-between mt-6 text-xs text-gray-500">
+      <span>Showing 1-12 of 12 models</span>
+      <div class="flex items-center gap-1">
+        <button class="rounded-md bg-electric/15 text-electric px-3 py-1.5 font-medium">1</button>
+        <button class="rounded-md bg-white/5 text-gray-500 px-3 py-1.5 hover:bg-white/10 hover:text-gray-300 transition-colors">2</button>
+        <button class="rounded-md bg-white/5 text-gray-500 px-3 py-1.5 hover:bg-white/10 hover:text-gray-300 transition-colors">3</button>
+      </div>
+    </div>
+  </div>
+</MarketingLayout>

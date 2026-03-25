@@ -16,7 +16,7 @@ directory = "./dist"
 
 [vars]
 PUBLIC_SITE_URL = "https://quantamrkt.com"
-GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_ID = "Ov23liuaDLn9Xtgh2uCO"
 
 # Secrets (set via `wrangler secret put`):
 # GITHUB_CLIENT_SECRET

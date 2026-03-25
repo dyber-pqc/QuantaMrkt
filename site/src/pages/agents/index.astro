@@ -1,0 +1,185 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+
+const agents = [
+  {
+    name: 'finance-copilot',
+    org: 'Acme Corp',
+    did: 'did:web:acme.corp:agents:finance-copilot',
+    algorithm: 'ML-DSA-87',
+    capabilities: ['Financial Analysis', 'Risk Assessment', 'Compliance Audit'],
+    status: 'active',
+    registered: '2026-03-12',
+  },
+  {
+    name: 'code-reviewer',
+    org: 'DevSecOps Inc',
+    did: 'did:web:devsecops.io:agents:code-reviewer',
+    algorithm: 'ML-DSA-65',
+    capabilities: ['Code Review', 'Vulnerability Scanning', 'PQC Migration'],
+    status: 'active',
+    registered: '2026-03-10',
+  },
+  {
+    name: 'data-pipeline',
+    org: 'Globex Systems',
+    did: 'did:web:globex.com:agents:data-pipeline',
+    algorithm: 'ML-DSA-87',
+    capabilities: ['ETL Processing', 'Data Validation', 'Schema Migration'],
+    status: 'active',
+    registered: '2026-03-08',
+  },
+  {
+    name: 'threat-detector',
+    org: 'CyberShield AI',
+    did: 'did:web:cybershield.ai:agents:threat-detector',
+    algorithm: 'ML-DSA-87',
+    capabilities: ['Threat Detection', 'Incident Response', 'Network Analysis'],
+    status: 'active',
+    registered: '2026-03-05',
+  },
+  {
+    name: 'model-validator',
+    org: 'QuantaMrkt',
+    did: 'did:web:quantmrkt.com:agents:model-validator',
+    algorithm: 'ML-DSA-87',
+    capabilities: ['Model Verification', 'Signature Validation', 'Hash Integrity'],
+    status: 'active',
+    registered: '2026-02-28',
+  },
+  {
+    name: 'doc-summarizer',
+    org: 'LegalTech Co',
+    did: 'did:web:legaltech.co:agents:doc-summarizer',
+    algorithm: 'ML-DSA-65',
+    capabilities: ['Document Analysis', 'Summarization', 'Entity Extraction'],
+    status: 'active',
+    registered: '2026-02-25',
+  },
+  {
+    name: 'supply-chain-monitor',
+    org: 'LogiChain',
+    did: 'did:web:logichain.io:agents:supply-chain-monitor',
+    algorithm: 'ML-DSA-44',
+    capabilities: ['Supply Chain Monitoring', 'Anomaly Detection', 'Provenance Tracking'],
+    status: 'suspended',
+    registered: '2026-02-20',
+  },
+  {
+    name: 'research-assistant',
+    org: 'BioGenomics',
+    did: 'did:web:biogenomics.org:agents:research-assistant',
+    algorithm: 'ML-DSA-65',
+    capabilities: ['Literature Search', 'Data Analysis', 'Report Generation'],
+    status: 'active',
+    registered: '2026-02-15',
+  },
+];
+---
+
+<MarketingLayout title="Agent Directory" description="Browse PQC-authenticated AI agents in the quantum-safe registry">
+  <div class="mx-auto max-w-7xl px-6 py-12">
+    <!-- Hero -->
+    <div class="text-center mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Agent Directory</h1>
+      <p class="text-base text-gray-400 max-w-xl mx-auto">Discover PQC-authenticated AI agents with verifiable identities and cryptographic credentials.</p>
+    </div>
+
+    <!-- Search -->
+    <div class="max-w-lg mx-auto mb-8">
+      <div class="relative">
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Search agents by name, org, or DID..."
+          class="w-full rounded-xl border border-white/10 bg-navy-800 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+        />
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="flex items-center gap-px rounded-lg overflow-hidden border border-white/5 mb-6">
+      <div class="flex-1 bg-navy-800 px-4 py-3">
+        <p class="text-lg font-semibold text-white font-mono leading-none">{agents.length}</p>
+        <p class="text-xs text-gray-500 mt-1">Registered Agents</p>
+      </div>
+      <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
+        <p class="text-lg font-semibold text-white font-mono leading-none">{agents.filter(a => a.status === 'active').length}</p>
+        <p class="text-xs text-gray-500 mt-1">Active</p>
+      </div>
+      <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
+        <p class="text-lg font-semibold text-white font-mono leading-none">{new Set(agents.map(a => a.org)).size}</p>
+        <p class="text-xs text-gray-500 mt-1">Organizations</p>
+      </div>
+      <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
+        <p class="text-lg font-semibold text-white font-mono leading-none">3</p>
+        <p class="text-xs text-gray-500 mt-1">Algorithms</p>
+      </div>
+    </div>
+
+    <!-- Agent List -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/5 text-xs text-gray-500">
+            <th class="text-left font-medium px-5 py-3">Agent</th>
+            <th class="text-left font-medium px-5 py-3 hidden lg:table-cell">DID</th>
+            <th class="text-left font-medium px-5 py-3 hidden md:table-cell">Algorithm</th>
+            <th class="text-left font-medium px-5 py-3 hidden sm:table-cell">Capabilities</th>
+            <th class="text-center font-medium px-5 py-3">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {agents.map((agent, i) => (
+            <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+              <td class="px-5 py-3">
+                <div>
+                  <p class="text-sm font-medium text-gray-200">{agent.name}</p>
+                  <p class="text-xs text-gray-500">{agent.org}</p>
+                </div>
+              </td>
+              <td class="px-5 py-3 hidden lg:table-cell">
+                <span class="font-mono text-[11px] text-gray-500">{agent.did.slice(0, 32)}...</span>
+              </td>
+              <td class="px-5 py-3 hidden md:table-cell">
+                <span class="font-mono text-xs text-gray-400">{agent.algorithm}</span>
+              </td>
+              <td class="px-5 py-3 hidden sm:table-cell">
+                <div class="flex flex-wrap gap-1">
+                  {agent.capabilities.slice(0, 2).map((cap) => (
+                    <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">{cap}</span>
+                  ))}
+                  {agent.capabilities.length > 2 && (
+                    <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">+{agent.capabilities.length - 2}</span>
+                  )}
+                </div>
+              </td>
+              <td class="px-5 py-3 text-center">
+                {agent.status === 'active' ? (
+                  <span class="inline-flex items-center gap-1 text-[11px] text-quantum">
+                    <span class="h-1.5 w-1.5 rounded-full bg-quantum" />
+                    Active
+                  </span>
+                ) : (
+                  <span class="inline-flex items-center gap-1 text-[11px] text-warning">
+                    <span class="h-1.5 w-1.5 rounded-full bg-warning" />
+                    Suspended
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-6 flex items-center justify-between text-xs text-gray-500">
+      <span>Showing {agents.length} agents</span>
+      <a href="/dashboard/agents" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
+        Register Your Agent
+      </a>
+    </div>
+  </div>
+</MarketingLayout>

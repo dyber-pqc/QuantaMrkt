@@ -1,0 +1,208 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { SITE } from '../lib/constants';
+
+const trendingModels = [
+  { name: 'Llama-3.1-70B-Instruct', author: 'meta-llama', slug: 'meta-llama-Llama-3.1-70B-Instruct', downloads: '2.4M', verifications: 847, risk: 'CRITICAL', riskBadge: 'badge-critical' },
+  { name: 'FLUX.1-dev', author: 'black-forest-labs', slug: 'black-forest-labs-FLUX.1-dev', downloads: '3.2M', verifications: 612, risk: 'MEDIUM', riskBadge: 'badge-medium' },
+  { name: 'whisper-large-v3', author: 'openai', slug: 'openai-whisper-large-v3', downloads: '4.7M', verifications: 534, risk: 'MEDIUM', riskBadge: 'badge-medium' },
+  { name: 'Mixtral-8x22B-Instruct', author: 'mistralai', slug: 'mistralai-Mixtral-8x22B-Instruct-v0.1', downloads: '1.8M', verifications: 421, risk: 'HIGH', riskBadge: 'badge-high' },
+  { name: 'gemma-2-27b-it', author: 'google', slug: 'google-gemma-2-27b-it', downloads: '1.1M', verifications: 389, risk: 'HIGH', riskBadge: 'badge-high' },
+];
+
+const recentVerifications = [
+  { time: '3 min ago', model: 'meta-llama/Llama-3.1-70B-Instruct', signer: 'did:web:meta.com:ml-signing', algorithm: 'ML-DSA-87' },
+  { time: '12 min ago', model: 'black-forest-labs/FLUX.1-dev', signer: 'did:web:bfl.com:signing', algorithm: 'ML-DSA-87' },
+  { time: '28 min ago', model: 'openai/whisper-large-v3', signer: 'did:web:openai.com:registry', algorithm: 'ML-DSA-87' },
+  { time: '45 min ago', model: 'BAAI/bge-m3', signer: 'did:web:baai.ac.cn:models', algorithm: 'ML-DSA-65' },
+  { time: '1h ago', model: 'codellama/CodeLlama-34b-Instruct', signer: 'did:web:meta.com:ml-signing', algorithm: 'ML-DSA-87' },
+  { time: '1h ago', model: 'mistralai/Mixtral-8x22B-Instruct', signer: 'did:web:mistral.ai:registry', algorithm: 'ML-DSA-65' },
+  { time: '2h ago', model: 'google/gemma-2-27b-it', signer: 'did:web:google.com:ai-safety', algorithm: 'ML-DSA-65' },
+  { time: '3h ago', model: 'liuhaotian/llava-v1.6-34b', signer: 'did:web:quantmrkt.com:verification', algorithm: 'ML-DSA-65' },
+  { time: '4h ago', model: 'microsoft/Phi-3-medium-128k', signer: 'did:web:microsoft.com:ai', algorithm: 'ML-DSA-87' },
+  { time: '5h ago', model: 'thenlper/gte-large', signer: 'did:web:quantmrkt.com:verification', algorithm: 'ML-DSA-44' },
+];
+
+const hndlLeaderboard = [
+  { name: 'Llama-3.1-70B-Instruct', author: 'meta-llama', score: 82, shelfLife: '12 yr', recommendation: 'Immediate PQC migration' },
+  { name: 'Mixtral-8x22B-Instruct', author: 'mistralai', score: 78, shelfLife: '15 yr', recommendation: 'Urgent PQC migration' },
+  { name: 'CodeLlama-34b-Instruct', author: 'codellama', score: 75, shelfLife: '14 yr', recommendation: 'Urgent PQC migration' },
+  { name: 'gemma-2-27b-it', author: 'google', score: 71, shelfLife: '16 yr', recommendation: 'Plan PQC migration' },
+  { name: 'llava-v1.6-34b', author: 'liuhaotian', score: 68, shelfLife: '18 yr', recommendation: 'Plan PQC migration' },
+  { name: 'Phi-3-medium-128k', author: 'microsoft', score: 54, shelfLife: '20 yr', recommendation: 'Monitor' },
+  { name: 'FLUX.1-dev', author: 'black-forest-labs', score: 48, shelfLife: '22 yr', recommendation: 'Monitor' },
+  { name: 'whisper-large-v3', author: 'openai', score: 45, shelfLife: '22 yr', recommendation: 'Monitor' },
+  { name: 'bge-m3', author: 'BAAI', score: 32, shelfLife: '25+ yr', recommendation: 'Low priority' },
+  { name: 'gte-large', author: 'thenlper', score: 28, shelfLife: '25+ yr', recommendation: 'Low priority' },
+];
+---
+
+<MarketingLayout title="Explore" description="Trending models, recent verifications, and community activity on QuantaMrkt">
+  <div class="mx-auto max-w-7xl px-6 py-12">
+    <!-- Hero -->
+    <div class="text-center mb-12">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Explore</h1>
+      <p class="text-base text-gray-400 max-w-xl mx-auto">Discover what's happening across the quantum-safe AI ecosystem.</p>
+    </div>
+
+    <!-- Trending Models -->
+    <section class="mb-10">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-white">Trending Models</h2>
+        <a href="/models" class="text-xs text-electric hover:text-electric-400 transition-colors">View all</a>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+        {trendingModels.map((model) => (
+          <a href={`/models/${model.slug}`} class="flex-shrink-0 w-64 rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-electric/20 transition-colors group">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-xs font-bold text-gray-400">
+                {model.author[0].toUpperCase()}
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-semibold text-gray-200 group-hover:text-white truncate">{model.name}</p>
+                <p class="text-[10px] text-gray-500">{model.author}</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="text-gray-500">{model.downloads} downloads</span>
+              <span class={model.riskBadge + ' !text-[10px] !px-1.5 !py-0'}>{model.risk}</span>
+            </div>
+            <div class="mt-2 flex items-center gap-1">
+              <svg class="h-3 w-3 text-quantum" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+              <span class="text-[10px] text-quantum">{model.verifications} verifications</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <!-- Recently Verified -->
+      <div class="lg:col-span-1">
+        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+          <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recently Verified</h2>
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-quantum opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-quantum"></span>
+            </span>
+          </div>
+          <div class="divide-y divide-white/[0.03]">
+            {recentVerifications.map((event, i) => (
+              <div class={`px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <div class="flex items-center justify-between mb-0.5">
+                  <span class="text-[11px] text-gray-500">{event.time}</span>
+                  <span class="font-mono text-[10px] text-gray-600">{event.algorithm}</span>
+                </div>
+                <p class="text-xs text-gray-300 font-mono truncate">{event.model}</p>
+                <p class="text-[10px] text-gray-600 font-mono truncate">{event.signer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- HNDL Risk Leaderboard -->
+      <div class="lg:col-span-2">
+        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+          <div class="px-4 py-3 border-b border-white/5">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk Leaderboard</h2>
+            <p class="text-[10px] text-gray-600 mt-0.5">Highest-risk popular models by quantum vulnerability score</p>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-white/5 text-gray-500">
+                <th class="text-left font-medium px-4 py-2 w-8">#</th>
+                <th class="text-left font-medium px-4 py-2">Model</th>
+                <th class="text-center font-medium px-4 py-2">Score</th>
+                <th class="text-left font-medium px-4 py-2 hidden sm:table-cell">Shelf Life</th>
+                <th class="text-left font-medium px-4 py-2 hidden md:table-cell">Recommendation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hndlLeaderboard.map((item, i) => (
+                <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <td class="px-4 py-2 text-gray-600 font-mono">{i + 1}</td>
+                  <td class="px-4 py-2">
+                    <p class="text-gray-200 font-medium">{item.name}</p>
+                    <p class="text-[10px] text-gray-500">{item.author}</p>
+                  </td>
+                  <td class="px-4 py-2 text-center">
+                    <span class={`font-mono font-semibold ${
+                      item.score >= 70 ? 'text-danger' :
+                      item.score >= 50 ? 'text-warning' :
+                      item.score >= 35 ? 'text-electric' :
+                      'text-quantum'
+                    }`}>{item.score}</span>
+                  </td>
+                  <td class="px-4 py-2 hidden sm:table-cell">
+                    <span class="font-mono text-gray-400">{item.shelfLife}</span>
+                  </td>
+                  <td class="px-4 py-2 hidden md:table-cell">
+                    <span class={`text-[11px] ${
+                      item.score >= 70 ? 'text-danger' :
+                      item.score >= 50 ? 'text-warning' :
+                      'text-gray-500'
+                    }`}>{item.recommendation}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Migration Stats -->
+    <section class="mt-10 mb-10">
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-6">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5 text-center">Migration Stats</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+          <div>
+            <p class="text-4xl font-bold text-electric font-mono mb-1">1,247</p>
+            <p class="text-xs text-gray-500">Repositories Analyzed</p>
+          </div>
+          <div>
+            <p class="text-4xl font-bold text-warning font-mono mb-1">3,891</p>
+            <p class="text-xs text-gray-500">Vulnerabilities Found</p>
+          </div>
+          <div>
+            <p class="text-4xl font-bold text-quantum font-mono mb-1">2,156</p>
+            <p class="text-xs text-gray-500">Automatically Fixed</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Community -->
+    <section>
+      <div class="text-center mb-6">
+        <h2 class="text-sm font-semibold text-white mb-1">Community</h2>
+        <p class="text-xs text-gray-500">Join the quantum-safe AI movement</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <a href="https://discord.gg/quantmrkt" class="rounded-xl border border-white/5 bg-navy-800 p-5 hover:border-electric/20 transition-colors text-center group" target="_blank" rel="noopener">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#5865F2]/15 mx-auto mb-3">
+            <svg class="h-5 w-5 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+          </div>
+          <p class="text-sm font-medium text-gray-200 group-hover:text-white mb-1">Discord</p>
+          <p class="text-xs text-gray-500">Join the discussion</p>
+        </a>
+        <a href={SITE.github} class="rounded-xl border border-white/5 bg-navy-800 p-5 hover:border-electric/20 transition-colors text-center group" target="_blank" rel="noopener">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 mx-auto mb-3">
+            <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </div>
+          <p class="text-sm font-medium text-gray-200 group-hover:text-white mb-1">GitHub</p>
+          <p class="text-xs text-gray-500">Star & contribute</p>
+        </a>
+        <a href="/dashboard/agents" class="rounded-xl border border-white/5 bg-navy-800 p-5 hover:border-electric/20 transition-colors text-center group">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-quantum/15 mx-auto mb-3">
+            <svg class="h-5 w-5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+          </div>
+          <p class="text-sm font-medium text-gray-200 group-hover:text-white mb-1">Become a Verifier</p>
+          <p class="text-xs text-gray-500">Help secure the ecosystem</p>
+        </a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
