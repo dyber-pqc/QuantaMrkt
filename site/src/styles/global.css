@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  html {
+    @apply bg-navy-900 text-gray-100 antialiased;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen font-sans;
+  }
+
+  ::selection {
+    @apply bg-electric/30 text-white;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-navy-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-navy-600 rounded-full;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-electric text-navy-900 font-semibold rounded-lg
+           hover:bg-electric-400 transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-6 py-3 border border-electric/30 text-electric rounded-lg
+           hover:bg-electric/10 transition-colors duration-200;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-4 py-2 text-gray-300 rounded-lg
+           hover:bg-white/5 transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-navy-800 border border-white/5 rounded-xl p-6;
+  }
+
+  .card-hover {
+    @apply card hover:border-electric/20 transition-colors duration-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium rounded-full;
+  }
+
+  .badge-critical {
+    @apply badge bg-danger/20 text-danger;
+  }
+
+  .badge-high {
+    @apply badge bg-warning/20 text-warning;
+  }
+
+  .badge-medium {
+    @apply badge bg-electric/20 text-electric;
+  }
+
+  .badge-low {
+    @apply badge bg-quantum/20 text-quantum;
+  }
+
+  .badge-verified {
+    @apply badge bg-quantum/20 text-quantum;
+  }
+
+  .glow-electric {
+    box-shadow: 0 0 40px rgba(0, 212, 255, 0.15);
+  }
+
+  .glow-quantum {
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.15);
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-electric to-quantum bg-clip-text text-transparent;
+  }
+
+  .section-heading {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
+  }
+}

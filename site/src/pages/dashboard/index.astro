@@ -1,0 +1,100 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+
+const stats = [
+  { label: 'Models Signed', value: '1,247', icon: '🔏', color: 'electric' },
+  { label: 'Agents Registered', value: '892', icon: '🤖', color: 'quantum' },
+  { label: 'Migrations Run', value: '156', icon: '🔄', color: 'warning' },
+  { label: 'CNSA 2.0 Ready', value: '78%', icon: '🛡️', color: 'quantum' },
+];
+
+const recentActivity = [
+  { action: 'Verified', target: 'meta-llama/Llama-3.1-70B', badge: 'verified', time: '2 minutes ago' },
+  { action: 'Agent registered', target: 'finance-copilot', badge: 'low', time: '14 minutes ago' },
+  { action: 'Migration report completed', target: 'acme/backend', badge: 'medium', time: '1 hour ago' },
+  { action: 'Signed model', target: 'mistral/Mixtral-8x22B', badge: 'verified', time: '3 hours ago' },
+  { action: 'HNDL risk updated', target: 'openai/whisper-large-v3', badge: 'high', time: '5 hours ago' },
+];
+
+const riskDistribution = [
+  { level: 'CRITICAL', count: 23, badge: 'badge-critical' },
+  { level: 'HIGH', count: 47, badge: 'badge-high' },
+  { level: 'MEDIUM', count: 89, badge: 'badge-medium' },
+  { level: 'LOW', count: 134, badge: 'badge-low' },
+];
+---
+
+<DashboardLayout title="Overview">
+  <!-- Stats Row -->
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+    {stats.map((stat) => (
+      <div class="card">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-sm font-medium text-gray-400">{stat.label}</span>
+          <span class="text-lg">{stat.icon}</span>
+        </div>
+        <p class={`text-3xl font-bold ${stat.color === 'electric' ? 'text-electric' : stat.color === 'quantum' ? 'text-quantum' : 'text-warning'}`}>
+          {stat.value}
+        </p>
+      </div>
+    ))}
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Recent Activity -->
+    <div class="lg:col-span-2 card">
+      <h2 class="text-lg font-semibold text-white mb-4">Recent Activity</h2>
+      <div class="space-y-4">
+        {recentActivity.map((item) => (
+          <div class="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
+            <div class={`h-2 w-2 rounded-full flex-shrink-0 ${
+              item.badge === 'verified' ? 'bg-quantum' :
+              item.badge === 'high' ? 'bg-warning' :
+              item.badge === 'medium' ? 'bg-electric' : 'bg-quantum'
+            }`} />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-white">
+                {item.action}
+                <span class="font-mono text-electric ml-1">{item.target}</span>
+              </p>
+            </div>
+            <span class="text-xs text-gray-500 whitespace-nowrap">{item.time}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- HNDL Risk Distribution -->
+    <div class="card">
+      <h2 class="text-lg font-semibold text-white mb-4">HNDL Risk Distribution</h2>
+      <div class="space-y-4">
+        {riskDistribution.map((item) => (
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class={item.badge}>{item.level}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="w-24 h-2 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  class={`h-full rounded-full ${
+                    item.level === 'CRITICAL' ? 'bg-danger' :
+                    item.level === 'HIGH' ? 'bg-warning' :
+                    item.level === 'MEDIUM' ? 'bg-electric' : 'bg-quantum'
+                  }`}
+                  style={`width: ${(item.count / 134) * 100}%`}
+                />
+              </div>
+              <span class="text-sm font-mono text-gray-400 w-8 text-right">{item.count}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div class="mt-6 pt-4 border-t border-white/5">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-400">Total Assessed</span>
+          <span class="font-semibold text-white font-mono">293</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>

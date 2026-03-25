@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quantmrkt-api"
+version = "0.1.0"
+description = "API server for QuantaMrkt — a quantum-safe AI marketplace"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Dyber PQC" },
+]
+
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+    "ruff",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

@@ -1,0 +1,108 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+
+const reports = [
+  {
+    id: 'acme-backend',
+    repo: 'acme/backend-services',
+    date: '2026-03-22',
+    critical: 12,
+    high: 23,
+    medium: 18,
+    low: 14,
+    status: 'Complete',
+  },
+  {
+    id: 'globex-api',
+    repo: 'globex/api-gateway',
+    date: '2026-03-20',
+    critical: 3,
+    high: 8,
+    medium: 15,
+    low: 22,
+    status: 'Complete',
+  },
+  {
+    id: 'acme-frontend',
+    repo: 'acme/frontend-app',
+    date: '2026-03-25',
+    critical: 0,
+    high: 2,
+    medium: 5,
+    low: 9,
+    status: 'In Progress',
+  },
+];
+---
+
+<DashboardLayout title="Migration Hub">
+  <!-- URL Input -->
+  <div class="card mb-8">
+    <h2 class="text-lg font-semibold text-white mb-2">Analyze a Repository</h2>
+    <p class="text-sm text-gray-400 mb-4">Paste a GitHub repository URL to scan for quantum-vulnerable cryptography.</p>
+    <form class="flex flex-col gap-3 sm:flex-row">
+      <input
+        type="url"
+        placeholder="https://github.com/org/repo"
+        class="flex-1 rounded-lg border border-white/10 bg-navy-900 px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50 font-mono"
+      />
+      <button type="submit" class="btn-primary whitespace-nowrap">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        Scan Repository
+      </button>
+    </form>
+  </div>
+
+  <!-- Recent Reports -->
+  <div class="card">
+    <h2 class="text-lg font-semibold text-white mb-4">Recent Reports</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/10">
+            <th class="text-left py-3 pr-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Repository</th>
+            <th class="text-left py-3 pr-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <th class="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Critical</th>
+            <th class="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">High</th>
+            <th class="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Medium</th>
+            <th class="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Low</th>
+            <th class="text-right py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reports.map((report) => (
+            <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+              <td class="py-4 pr-4">
+                <a href={`/dashboard/migrate/report/${report.id}`} class="font-mono text-sm text-electric hover:text-electric-400 transition-colors">
+                  {report.repo}
+                </a>
+              </td>
+              <td class="py-4 pr-4 text-gray-400">{report.date}</td>
+              <td class="py-4 px-2 text-center">
+                {report.critical > 0 ? (
+                  <span class="font-mono font-semibold text-danger">{report.critical}</span>
+                ) : (
+                  <span class="font-mono text-gray-600">0</span>
+                )}
+              </td>
+              <td class="py-4 px-2 text-center">
+                <span class="font-mono font-semibold text-warning">{report.high}</span>
+              </td>
+              <td class="py-4 px-2 text-center">
+                <span class="font-mono text-electric">{report.medium}</span>
+              </td>
+              <td class="py-4 px-2 text-center">
+                <span class="font-mono text-quantum">{report.low}</span>
+              </td>
+              <td class="py-4 text-right">
+                <span class={`badge ${report.status === 'Complete' ? 'bg-quantum/20 text-quantum' : 'bg-warning/20 text-warning'}`}>
+                  {report.status}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</DashboardLayout>

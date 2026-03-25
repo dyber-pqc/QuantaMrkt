@@ -1,0 +1,96 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { DASHBOARD_NAV, SITE } from '../lib/constants';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+function isActive(href: string): boolean {
+  if (href === '/dashboard') return currentPath === '/dashboard';
+  return currentPath.startsWith(href);
+}
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="hidden w-64 flex-shrink-0 border-r border-white/5 bg-navy-800 lg:block">
+      <div class="flex h-full flex-col">
+        <!-- Logo -->
+        <div class="flex items-center gap-2 border-b border-white/5 px-6 py-4">
+          <a href="/" class="flex items-center gap-2">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-electric/20">
+              <span class="text-lg font-bold text-electric">Q</span>
+            </div>
+            <span class="text-lg font-bold">{SITE.name}</span>
+          </a>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 space-y-1 px-3 py-4">
+          {DASHBOARD_NAV.map((item) => (
+            <a
+              href={item.href}
+              class:list={[
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200',
+                isActive(item.href)
+                  ? 'bg-electric/10 text-electric'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white',
+              ]}
+            >
+              <span class="h-5 w-5 text-center">{
+                item.icon === 'grid' ? '##' :
+                item.icon === 'box' ? '[]' :
+                item.icon === 'bot' ? '<>' :
+                item.icon === 'arrow-right-left' ? '<>' :
+                item.icon === 'shield-check' ? '()' :
+                item.icon === 'settings' ? '**' : ''
+              }</span>
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <!-- Bottom section -->
+        <div class="border-t border-white/5 p-4">
+          <div class="flex items-center gap-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-electric/20 text-sm font-bold text-electric">
+              U
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="truncate text-sm font-medium text-white">User</p>
+              <p class="truncate text-xs text-gray-500">Free tier</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 flex-col overflow-hidden">
+      <!-- Top Bar -->
+      <header class="flex items-center justify-between border-b border-white/5 bg-navy-900 px-6 py-4">
+        <div class="flex items-center gap-4">
+          <button class="lg:hidden text-gray-400 hover:text-white">
+            <span class="text-xl">=</span>
+          </button>
+          <h1 class="text-lg font-semibold text-white">{title || 'Dashboard'}</h1>
+        </div>
+        <div class="flex items-center gap-4">
+          <a href="/docs" class="text-sm text-gray-400 hover:text-white transition-colors">Docs</a>
+          <a href={SITE.github} class="text-sm text-gray-400 hover:text-white transition-colors" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <main class="flex-1 overflow-y-auto p-6">
+        <slot />
+      </main>
+    </div>
+  </div>
+</BaseLayout>

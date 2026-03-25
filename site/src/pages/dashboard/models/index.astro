@@ -1,0 +1,126 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+
+const models = [
+  {
+    id: 'meta-llama-3.1-70b',
+    name: 'meta-llama/Llama-3.1-70B-Instruct',
+    algorithm: 'ML-DSA-87',
+    risk: 'CRITICAL',
+    riskBadge: 'badge-critical',
+    signer: 'did:web:meta.com:ml-signing',
+    date: '2026-03-18',
+    files: 24,
+  },
+  {
+    id: 'mistral-mixtral-8x22b',
+    name: 'mistral/Mixtral-8x22B-Instruct-v0.1',
+    algorithm: 'ML-DSA-65',
+    risk: 'HIGH',
+    riskBadge: 'badge-high',
+    signer: 'did:web:mistral.ai:signer',
+    date: '2026-03-15',
+    files: 18,
+  },
+  {
+    id: 'openai-whisper-large-v3',
+    name: 'openai/whisper-large-v3',
+    algorithm: 'ML-DSA-87',
+    risk: 'MEDIUM',
+    riskBadge: 'badge-medium',
+    signer: 'did:web:openai.com:models',
+    date: '2026-03-12',
+    files: 6,
+  },
+  {
+    id: 'google-gemma-2-27b',
+    name: 'google/gemma-2-27b-it',
+    algorithm: 'ML-DSA-65',
+    risk: 'HIGH',
+    riskBadge: 'badge-high',
+    signer: 'did:web:google.com:deepmind',
+    date: '2026-03-10',
+    files: 12,
+  },
+  {
+    id: 'stabilityai-sdxl',
+    name: 'stabilityai/stable-diffusion-xl-base-1.0',
+    algorithm: 'ML-DSA-44',
+    risk: 'LOW',
+    riskBadge: 'badge-low',
+    signer: 'did:web:stability.ai:sign',
+    date: '2026-03-08',
+    files: 4,
+  },
+  {
+    id: 'microsoft-phi-3-medium',
+    name: 'microsoft/Phi-3-medium-128k-instruct',
+    algorithm: 'ML-DSA-87',
+    risk: 'MEDIUM',
+    riskBadge: 'badge-medium',
+    signer: 'did:web:microsoft.com:ml',
+    date: '2026-03-05',
+    files: 9,
+  },
+];
+
+const riskLevels = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+---
+
+<DashboardLayout title="Model Registry">
+  <!-- Search & Filters -->
+  <div class="mb-6 space-y-4">
+    <div class="relative">
+      <input
+        type="text"
+        placeholder="Search models by name, signer, or algorithm..."
+        class="w-full rounded-lg border border-white/10 bg-navy-800 px-4 py-3 pl-10 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+      />
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {riskLevels.map((level, i) => (
+        <button
+          class={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            i === 0
+              ? 'bg-electric/20 text-electric'
+              : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          {level}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <!-- Model Grid -->
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    {models.map((model) => (
+      <a href={`/dashboard/models/${model.id}`} class="card-hover group block">
+        <div class="flex items-start justify-between mb-3">
+          <span class={model.riskBadge}>{model.risk}</span>
+          <span class="text-xs text-gray-500">{model.files} files</span>
+        </div>
+        <h3 class="font-mono text-sm font-semibold text-white group-hover:text-electric transition-colors mb-2 break-all">
+          {model.name}
+        </h3>
+        <div class="space-y-2 text-xs text-gray-400">
+          <div class="flex items-center justify-between">
+            <span>Algorithm</span>
+            <span class="font-mono text-electric">{model.algorithm}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Signer</span>
+            <span class="font-mono truncate ml-2 max-w-[180px]">{model.signer}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Signed</span>
+            <span>{model.date}</span>
+          </div>
+        </div>
+      </a>
+    ))}
+  </div>
+</DashboardLayout>

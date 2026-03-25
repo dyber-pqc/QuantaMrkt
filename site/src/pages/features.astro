@@ -1,0 +1,321 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const pqaidCode = `<span class="text-electric">import</span> { PqAid } <span class="text-electric">from</span> <span class="text-quantum">'@quantamrkt/pq-aid'</span>;
+
+<span class="text-gray-500">// Create a quantum-safe agent identity</span>
+<span class="text-electric">const</span> agent = <span class="text-electric">await</span> PqAid.createAgent({
+  name: <span class="text-quantum">'code-reviewer-01'</span>,
+  algorithm: <span class="text-quantum">'ML-DSA-65'</span>,
+  capabilities: [<span class="text-quantum">'sign'</span>, <span class="text-quantum">'verify'</span>, <span class="text-quantum">'delegate'</span>],
+});
+
+<span class="text-gray-500">// Sign an action</span>
+<span class="text-electric">const</span> signature = <span class="text-electric">await</span> agent.sign({
+  action: <span class="text-quantum">'approve-model'</span>,
+  modelId: <span class="text-quantum">'sha3-256:a1b2c3...'</span>,
+  timestamp: Date.now(),
+});
+
+<span class="text-gray-500">// Delegate to sub-agent</span>
+<span class="text-electric">const</span> delegation = <span class="text-electric">await</span> agent.delegate({
+  to: <span class="text-quantum">'did:pqaid:sub-agent-02'</span>,
+  scope: [<span class="text-quantum">'verify'</span>],
+  ttl: <span class="text-quantum">'24h'</span>,
+});`;
+
+const manifestCode = `{
+  <span class="text-electric">"@context"</span>: <span class="text-quantum">"https://quantamrkt.com/schema/v1"</span>,
+  <span class="text-electric">"type"</span>: <span class="text-quantum">"ModelManifest"</span>,
+  <span class="text-electric">"model"</span>: {
+    <span class="text-electric">"name"</span>: <span class="text-quantum">"llama-3-70b-instruct"</span>,
+    <span class="text-electric">"hash"</span>: {
+      <span class="text-electric">"algorithm"</span>: <span class="text-quantum">"SHA3-256"</span>,
+      <span class="text-electric">"value"</span>: <span class="text-quantum">"a1b2c3d4e5..."</span>
+    }
+  },
+  <span class="text-electric">"signature"</span>: {
+    <span class="text-electric">"algorithm"</span>: <span class="text-quantum">"ML-DSA-87"</span>,
+    <span class="text-electric">"signer"</span>: <span class="text-quantum">"did:pqaid:publisher-01"</span>,
+    <span class="text-electric">"value"</span>: <span class="text-quantum">"base64..."</span>
+  },
+  <span class="text-electric">"hndlRisk"</span>: {
+    <span class="text-electric">"score"</span>: <span class="text-warning">0.87</span>,
+    <span class="text-electric">"classification"</span>: <span class="text-quantum">"HIGH"</span>,
+    <span class="text-electric">"horizon"</span>: <span class="text-quantum">"2030"</span>
+  },
+  <span class="text-electric">"verification"</span>: {
+    <span class="text-electric">"required"</span>: <span class="text-warning">2</span>,
+    <span class="text-electric">"signers"</span>: [<span class="text-quantum">"..."</span>, <span class="text-quantum">"..."</span>, <span class="text-quantum">"..."</span>]
+  }
+}`;
+---
+
+<MarketingLayout title="Features" description="Deep dive into QuantaMrkt's post-quantum products: PQ-AID, Migrator, and Shield Registry.">
+
+  <!-- Page Header -->
+  <section class="py-24 text-center">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-electric/20 bg-electric/5 text-sm text-electric">
+        Product Deep Dive
+      </div>
+      <h1 class="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+        Built for the <span class="gradient-text">Post-Quantum Era</span>
+      </h1>
+      <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+        Three products working together to secure every layer of your AI infrastructure against quantum-era threats.
+      </p>
+    </div>
+  </section>
+
+  <!-- PQ-AID Section -->
+  <section id="pq-aid" class="py-24 border-t border-white/5 scroll-mt-24">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-electric/10 text-electric text-sm font-medium mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            PQ-AID
+          </div>
+          <h2 class="section-heading mb-4">Post-Quantum <span class="text-electric">Agent Identity</span></h2>
+          <p class="text-gray-400 text-lg leading-relaxed mb-8">
+            Cryptographic identity purpose-built for AI agents operating in autonomous, multi-party workflows. PQ-AID provides verifiable identity, secure delegation, and quantum-resistant communication channels for the agentic era.
+          </p>
+
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric/10 text-electric text-sm">&check;</span>
+              <div>
+                <p class="font-medium text-white">ML-DSA-65/87 Key Pairs</p>
+                <p class="text-sm text-gray-400">FIPS 204-compliant digital signatures for agent authentication and action signing.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric/10 text-electric text-sm">&check;</span>
+              <div>
+                <p class="font-medium text-white">DID-Compatible Identifiers</p>
+                <p class="text-sm text-gray-400">W3C Decentralized Identifier format for interoperable agent identity across platforms.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric/10 text-electric text-sm">&check;</span>
+              <div>
+                <p class="font-medium text-white">Delegation Chains</p>
+                <p class="text-sm text-gray-400">Scoped, time-limited permission delegation for agent-to-agent workflows with full auditability.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric/10 text-electric text-sm">&check;</span>
+              <div>
+                <p class="font-medium text-white">Encrypted Communication Channels</p>
+                <p class="text-sm text-gray-400">ML-KEM-768 key encapsulation for quantum-safe agent-to-agent encrypted messaging.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric/10 text-electric text-sm">&check;</span>
+              <div>
+                <p class="font-medium text-white">Revocation &amp; Rotation</p>
+                <p class="text-sm text-gray-400">Instant key revocation and automated rotation policies for compromised or retired agents.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card bg-navy-800/50 border-electric/10">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-3 h-3 rounded-full bg-red-500/60"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500/60"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500/60"></div>
+            <span class="ml-2 text-xs text-gray-500 font-mono">agent-identity.ts</span>
+          </div>
+          <pre class="text-sm leading-relaxed overflow-x-auto"><code class="font-mono text-gray-300" set:html={pqaidCode} /></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Migrator Section -->
+  <section id="migrator" class="py-24 border-t border-white/5 scroll-mt-24">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+        <div class="order-2 lg:order-1">
+          <div class="card bg-navy-800/50 border-quantum/10">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-3 h-3 rounded-full bg-red-500/60"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow-500/60"></div>
+              <div class="w-3 h-3 rounded-full bg-green-500/60"></div>
+              <span class="ml-2 text-xs text-gray-500 font-mono">migration-pipeline</span>
+            </div>
+            <div class="space-y-4 text-sm font-mono">
+              <div class="flex items-start gap-3">
+                <span class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-electric/20 text-electric flex items-center justify-center text-xs font-bold">1</span>
+                <div>
+                  <p class="text-white font-semibold">Analyze</p>
+                  <p class="text-gray-400 font-sans text-xs">Scan codebase for RSA, ECDSA, AES, SHA-2 usage patterns</p>
+                  <div class="mt-1 text-xs text-gray-500">
+                    <span class="text-warning">Found:</span> 47 crypto calls across 12 files
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-electric/20 text-electric flex items-center justify-center text-xs font-bold">2</span>
+                <div>
+                  <p class="text-white font-semibold">Plan</p>
+                  <p class="text-gray-400 font-sans text-xs">Generate migration plan with dependency graph</p>
+                  <div class="mt-1 text-xs text-gray-500">
+                    <span class="text-electric">Plan:</span> RSA-2048 &rarr; ML-DSA-65, ECDH &rarr; ML-KEM-768
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-quantum/20 text-quantum flex items-center justify-center text-xs font-bold">3</span>
+                <div>
+                  <p class="text-white font-semibold">Execute</p>
+                  <p class="text-gray-400 font-sans text-xs">AI-generated code transforms with human review</p>
+                  <div class="mt-1 text-xs text-gray-500">
+                    <span class="text-quantum">Migrated:</span> 47/47 calls, 12/12 files
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-quantum/20 text-quantum flex items-center justify-center text-xs font-bold">4</span>
+                <div>
+                  <p class="text-white font-semibold">Validate</p>
+                  <p class="text-gray-400 font-sans text-xs">KAT test suite &amp; compliance verification</p>
+                  <div class="mt-1 text-xs text-gray-500">
+                    <span class="text-quantum">✓</span> All 128 KAT vectors passed
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-1 lg:order-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-quantum/10 text-quantum text-sm font-medium mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+            Migrator
+          </div>
+          <h2 class="section-heading mb-4">AI-Powered <span class="text-quantum">PQC Migration</span></h2>
+          <p class="text-gray-400 text-lg leading-relaxed mb-8">
+            Stop manually hunting for classical crypto in your codebase. The Migrator uses AI to analyze, plan, execute, and validate your post-quantum migration end-to-end.
+          </p>
+
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-quantum/10 text-quantum text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">Multi-Language Analysis</p>
+                <p class="text-sm text-gray-400">Supports Python, TypeScript, Go, Rust, Java, and C/C++ crypto detection.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-quantum/10 text-quantum text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">Pattern Detection Engine</p>
+                <p class="text-sm text-gray-400">Identifies RSA, ECDSA, ECDH, AES-GCM, SHA-2, and 50+ classical crypto patterns.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-quantum/10 text-quantum text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">Automated Code Generation</p>
+                <p class="text-sm text-gray-400">AI generates migration code with human-reviewable diffs and rollback support.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-quantum/10 text-quantum text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">KAT Validation Suite</p>
+                <p class="text-sm text-gray-400">NIST Known Answer Test vectors verify correctness of every migrated crypto operation.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-quantum/10 text-quantum text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">CI/CD Integration</p>
+                <p class="text-sm text-gray-400">GitHub Actions, GitLab CI, and Jenkins plugins for continuous compliance monitoring.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shield Registry Section -->
+  <section id="shield" class="py-24 border-t border-white/5 scroll-mt-24">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-sm font-medium mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+            Shield Registry
+          </div>
+          <h2 class="section-heading mb-4">HNDL-Resistant <span class="text-purple-400">Model Protection</span></h2>
+          <p class="text-gray-400 text-lg leading-relaxed mb-8">
+            Every AI model deserves a verifiable identity. Shield Registry creates tamper-evident manifests with quantum-safe signatures so you can trust what you deploy.
+          </p>
+
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-400 text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">Model Manifests</p>
+                <p class="text-sm text-gray-400">Structured metadata including model hash, training provenance, and dependency graph.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-400 text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">HNDL Risk Calculation</p>
+                <p class="text-sm text-gray-400">Quantified risk scoring based on model sensitivity, data classification, and threat horizon.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-400 text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">Multi-Party Verification</p>
+                <p class="text-sm text-gray-400">Require N-of-M signatures from authorized parties before deployment approval.</p>
+              </div>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-purple-400 text-sm">✓</span>
+              <div>
+                <p class="font-medium text-white">Transparency Log</p>
+                <p class="text-sm text-gray-400">Append-only Merkle tree log of all registry operations for full auditability.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card bg-navy-800/50 border-purple-500/10">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-3 h-3 rounded-full bg-red-500/60"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500/60"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500/60"></div>
+            <span class="ml-2 text-xs text-gray-500 font-mono">model-manifest.json</span>
+          </div>
+          <pre class="text-sm leading-relaxed overflow-x-auto"><code class="font-mono text-gray-300" set:html={manifestCode} /></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom CTA -->
+  <section class="py-24 border-t border-white/5">
+    <div class="mx-auto max-w-7xl px-6 text-center">
+      <h2 class="section-heading mb-4">Ready to go <span class="gradient-text">quantum-safe</span>?</h2>
+      <p class="text-gray-400 text-lg max-w-xl mx-auto mb-8">
+        Start with the free tier and scale as your PQC migration progresses.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="/dashboard" class="btn-primary text-base px-8 py-3.5">
+          Get Started Free
+        </a>
+        <a href="/pricing" class="btn-secondary text-base px-8 py-3.5">View Pricing</a>
+      </div>
+    </div>
+  </section>
+
+</MarketingLayout>

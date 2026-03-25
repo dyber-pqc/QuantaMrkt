@@ -1,0 +1,100 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { NAV_ITEMS, SITE } from '../lib/constants';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+---
+
+<BaseLayout title={title} description={description}>
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-navy-900/80 backdrop-blur-xl">
+    <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+      <a href="/" class="flex items-center gap-2">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-electric/20">
+          <span class="text-lg font-bold text-electric">Q</span>
+        </div>
+        <span class="text-lg font-bold">{SITE.name}</span>
+      </a>
+
+      <div class="hidden items-center gap-8 md:flex">
+        {NAV_ITEMS.map((item) => (
+          <a
+            href={item.href}
+            class:list={[
+              'text-sm transition-colors duration-200',
+              currentPath === item.href ? 'text-electric' : 'text-gray-400 hover:text-white',
+            ]}
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+
+      <div class="flex items-center gap-4">
+        <a href={SITE.github} class="btn-ghost text-sm" target="_blank" rel="noopener">
+          GitHub
+        </a>
+        <a href="/dashboard" class="btn-primary text-sm">
+          Get Started
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main class="pt-[73px]">
+    <slot />
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 bg-navy-900">
+    <div class="mx-auto max-w-7xl px-6 py-16">
+      <div class="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div>
+          <h3 class="mb-4 text-sm font-semibold text-white">Products</h3>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li><a href="/features#pq-aid" class="hover:text-white transition-colors">PQ-AID</a></li>
+            <li><a href="/features#migrator" class="hover:text-white transition-colors">Migrator</a></li>
+            <li><a href="/features#shield" class="hover:text-white transition-colors">Shield Registry</a></li>
+            <li><a href="/pricing" class="hover:text-white transition-colors">Pricing</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="mb-4 text-sm font-semibold text-white">Developers</h3>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li><a href="/docs" class="hover:text-white transition-colors">Documentation</a></li>
+            <li><a href="/docs/api-reference" class="hover:text-white transition-colors">API Reference</a></li>
+            <li><a href="/docs/quickstart" class="hover:text-white transition-colors">Quickstart</a></li>
+            <li><a href={SITE.github} class="hover:text-white transition-colors">GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="mb-4 text-sm font-semibold text-white">Company</h3>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li><a href="/about" class="hover:text-white transition-colors">About</a></li>
+            <li><a href="/blog" class="hover:text-white transition-colors">Blog</a></li>
+            <li><a href="/careers" class="hover:text-white transition-colors">Careers</a></li>
+            <li><a href="/contact" class="hover:text-white transition-colors">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="mb-4 text-sm font-semibold text-white">Legal</h3>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li><a href="/privacy" class="hover:text-white transition-colors">Privacy</a></li>
+            <li><a href="/terms" class="hover:text-white transition-colors">Terms</a></li>
+            <li><a href="/security" class="hover:text-white transition-colors">Security</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mt-12 border-t border-white/5 pt-8 text-center text-sm text-gray-500">
+        &copy; {new Date().getFullYear()} Dyber PQC. All rights reserved.
+      </div>
+    </div>
+  </footer>
+</BaseLayout>

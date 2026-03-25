@@ -1,0 +1,164 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+
+const { id } = Astro.params;
+
+// Mock data — in production this would come from an API
+const model = {
+  id: 'meta-llama-3.1-70b',
+  name: 'meta-llama/Llama-3.1-70B-Instruct',
+  algorithm: 'ML-DSA-87',
+  risk: 'HIGH',
+  riskScore: 78,
+  shelfLife: '15 years',
+  cnsaReady: true,
+  files: [
+    { name: 'model-00001-of-00030.safetensors', hash: 'a3f2b8c91d4e5f6071829a3b4c5d6e7f8091a2b3c4d5e6f7081929a3b4c5d6e7' },
+    { name: 'model-00002-of-00030.safetensors', hash: 'b4c3d9e02f5a6b7182930c4d5e6f7a8b9102c3d4e5f6a7b8192a3b4c5d6e7f80' },
+    { name: 'config.json', hash: 'c5d4e0f13a6b7c8293041d5e6f7a8b9c0213d4e5f6a7b8c9203a4b5c6d7e8f91' },
+    { name: 'tokenizer.json', hash: 'd6e5f1a24b7c8d9304152e6f7a8b9c0d1324e5f6a7b8c9d0314a5b6c7d8e9f02' },
+  ],
+  signatures: [
+    {
+      role: 'Creator',
+      signer: 'did:web:meta.com:ml-signing:llama-team',
+      algorithm: 'ML-DSA-87',
+      date: '2026-03-18T14:32:00Z',
+      fingerprint: 'QmX7...f3k2',
+    },
+    {
+      role: 'Verifier',
+      signer: 'did:web:quantmrkt.com:verification:primary',
+      algorithm: 'ML-DSA-87',
+      date: '2026-03-18T14:35:12Z',
+      fingerprint: 'QmR9...h8j4',
+    },
+  ],
+  recommendation: 'This model uses weight files that are vulnerable to harvest-now-decrypt-later attacks within the projected shelf life. Recommend migrating to quantum-safe distribution channels and verifying all weight file integrity using PQC signatures before deployment.',
+};
+
+
+---
+
+<DashboardLayout title={model.name}>
+  <!-- Back link -->
+  <a href="/dashboard/models" class="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-electric transition-colors mb-6">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+    Back to Model Registry
+  </a>
+
+  <!-- Header -->
+  <div class="card mb-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="font-mono text-xl font-bold text-white mb-3">{model.name}</h2>
+        <div class="flex flex-wrap gap-2">
+          <span class="badge-verified">{model.algorithm} Signed</span>
+          {model.cnsaReady && <span class="badge bg-quantum/20 text-quantum">CNSA 2.0 Ready</span>}
+          <span class="badge-high">HNDL: {model.risk}</span>
+        </div>
+      </div>
+      <button class="btn-primary whitespace-nowrap">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        Verify Signature
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Manifest -->
+      <div class="card">
+        <h3 class="text-lg font-semibold text-white mb-4">File Manifest</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
+                <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">SHA3-256</th>
+              </tr>
+            </thead>
+            <tbody>
+              {model.files.map((file) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-3 pr-4">
+                    <span class="font-mono text-sm text-white">{file.name}</span>
+                  </td>
+                  <td class="py-3">
+                    <span class="font-mono text-xs text-gray-400 break-all">{file.hash}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Signature Chain -->
+      <div class="card">
+        <h3 class="text-lg font-semibold text-white mb-4">Signature Chain</h3>
+        <div class="space-y-4">
+          {model.signatures.map((sig, i) => (
+            <div class="relative pl-8">
+              {i < model.signatures.length - 1 && (
+                <div class="absolute left-3 top-8 h-full w-px bg-electric/20" />
+              )}
+              <div class="absolute left-0 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-electric/20 text-xs font-bold text-electric">
+                {i + 1}
+              </div>
+              <div class="rounded-lg border border-white/5 bg-navy-900/50 p-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-sm font-semibold text-white">{sig.role}</span>
+                  <span class="badge-verified">{sig.algorithm}</span>
+                </div>
+                <div class="space-y-1 text-xs text-gray-400">
+                  <p><span class="text-gray-500">DID:</span> <span class="font-mono">{sig.signer}</span></p>
+                  <p><span class="text-gray-500">Fingerprint:</span> <span class="font-mono">{sig.fingerprint}</span></p>
+                  <p><span class="text-gray-500">Date:</span> {new Date(sig.date).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- HNDL Risk Assessment -->
+    <div class="space-y-6">
+      <div class="card">
+        <h3 class="text-lg font-semibold text-white mb-4">HNDL Risk Assessment</h3>
+        <div class="flex items-center justify-center mb-6">
+          <div class="relative h-32 w-32">
+            <svg class="h-32 w-32 -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="8" class="text-white/5" />
+              <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="8"
+                stroke-dasharray={`${(model.riskScore / 100) * 339.3} 339.3`}
+                class="text-warning" stroke-linecap="round" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-2xl font-bold text-white">{model.riskScore}</span>
+              <span class="text-xs text-gray-500">/ 100</span>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">Risk Level</span>
+            <span class="badge-high">{model.risk}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">Shelf Life</span>
+            <span class="font-mono text-white">{model.shelfLife}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">CNSA 2.0</span>
+            <span class="text-quantum">Ready</span>
+          </div>
+        </div>
+        <div class="mt-4 pt-4 border-t border-white/5">
+          <p class="text-xs text-gray-400 leading-relaxed">{model.recommendation}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>

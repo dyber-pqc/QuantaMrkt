@@ -1,0 +1,239 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { SITE } from '../lib/constants';
+---
+
+<MarketingLayout title="QuantaMrkt — The Quantum-Safe AI Marketplace" description={SITE.description}>
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden py-24 md:py-36">
+    <!-- Background glow effects -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-electric/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-quantum/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="mx-auto max-w-7xl px-6 text-center relative z-10">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full border border-electric/20 bg-electric/5 text-sm text-electric">
+        <span class="inline-block w-2 h-2 rounded-full bg-electric animate-pulse"></span>
+        PQC-Native &middot; FIPS 203/204/205 Compliant
+      </div>
+
+      <h1 class="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
+        The <span class="gradient-text">Quantum-Safe</span><br />AI Marketplace
+      </h1>
+
+      <p class="mx-auto max-w-2xl text-lg md:text-xl text-gray-400 leading-relaxed mb-10">
+        PQC-native infrastructure to secure AI models, agents, and codebases against quantum threats. Built for the post-quantum era.
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+        <a href="/dashboard" class="btn-primary text-base px-8 py-3.5">
+          Get Started
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a href={SITE.github} class="btn-secondary text-base px-8 py-3.5" target="_blank" rel="noopener">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+        <div class="card text-center">
+          <p class="text-3xl font-bold text-electric mb-1">10+</p>
+          <p class="text-sm text-gray-400">months until CNSA 2.0</p>
+        </div>
+        <div class="card text-center">
+          <p class="text-3xl font-bold text-quantum mb-1">82:1</p>
+          <p class="text-sm text-gray-400">Agent-to-Human ratio</p>
+        </div>
+        <div class="card text-center">
+          <p class="text-3xl font-bold gradient-text mb-1">100%</p>
+          <p class="text-sm text-gray-400">PQC-Native</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Product Cards Section -->
+  <section class="py-24 border-t border-white/5">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="text-center mb-16">
+        <h2 class="section-heading mb-4">Three Products. <span class="gradient-text">One Mission.</span></h2>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+          Everything you need to secure your AI infrastructure against harvest-now-decrypt-later attacks.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- PQ-AID -->
+        <div class="card-hover group relative">
+          <div class="w-12 h-12 rounded-lg bg-electric/10 flex items-center justify-center mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-electric" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-2">PQ-AID</h3>
+          <p class="text-electric text-sm font-medium mb-3">Post-Quantum Agent Identity</p>
+          <p class="text-gray-400 text-sm leading-relaxed mb-5">
+            Cryptographic identity for AI agents with ML-DSA signing, DID-compatible identifiers, and delegation chains for autonomous workflows.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> ML-DSA-65/87 key pairs
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> DID-compatible identifiers
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> Delegation chains
+            </li>
+          </ul>
+          <a href="/features#pq-aid" class="inline-flex items-center gap-1 text-electric text-sm mt-5 group-hover:gap-2 transition-all">
+            Learn more
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Migrator -->
+        <div class="card-hover group relative">
+          <div class="w-12 h-12 rounded-lg bg-quantum/10 flex items-center justify-center mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-quantum" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Migrator</h3>
+          <p class="text-quantum text-sm font-medium mb-3">AI-Powered PQC Migration</p>
+          <p class="text-gray-400 text-sm leading-relaxed mb-5">
+            Analyze your codebase for classical crypto, generate migration plans, execute code transforms, and validate with KAT suites.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> Analyze &amp; detect patterns
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> Plan migration paths
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> Execute &amp; validate
+            </li>
+          </ul>
+          <a href="/features#migrator" class="inline-flex items-center gap-1 text-quantum text-sm mt-5 group-hover:gap-2 transition-all">
+            Learn more
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Shield Registry -->
+        <div class="card-hover group relative">
+          <div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
+          <h3 class="text-xl font-bold mb-2">Shield Registry</h3>
+          <p class="text-purple-400 text-sm font-medium mb-3">HNDL-Resistant Model Protection</p>
+          <p class="text-gray-400 text-sm leading-relaxed mb-5">
+            Publish verifiable model manifests with SHA3-256 hashes and ML-DSA-87 signatures. Protect your models from quantum-era supply chain attacks.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> SHA3-256 content hashes
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> ML-DSA-87 signatures
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="text-quantum">&#10003;</span> Transparency log
+            </li>
+          </ul>
+          <a href="/features#shield" class="inline-flex items-center gap-1 text-purple-400 text-sm mt-5 group-hover:gap-2 transition-all">
+            Learn more
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why QuantaMrkt — Comparison Table -->
+  <section class="py-24 border-t border-white/5">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="text-center mb-16">
+        <h2 class="section-heading mb-4">Why <span class="gradient-text">QuantaMrkt</span>?</h2>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+          The only marketplace built from the ground up for the post-quantum era.
+        </p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full max-w-4xl mx-auto">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="text-left py-4 pr-8 text-sm font-medium text-gray-400">Capability</th>
+              <th class="py-4 px-6 text-center">
+                <span class="text-sm font-bold gradient-text">QuantaMrkt</span>
+              </th>
+              <th class="py-4 px-6 text-center">
+                <span class="text-sm font-medium text-gray-400">Hugging Face</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="text-sm">
+            <tr class="border-b border-white/5">
+              <td class="py-4 pr-8 text-gray-300">Post-Quantum Cryptography</td>
+              <td class="py-4 px-6 text-center">
+                <span class="badge-verified">ML-DSA / ML-KEM</span>
+              </td>
+              <td class="py-4 px-6 text-center text-gray-500">Classical only</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-4 pr-8 text-gray-300">Agent Identity</td>
+              <td class="py-4 px-6 text-center">
+                <span class="badge-verified">PQ-AID native</span>
+              </td>
+              <td class="py-4 px-6 text-center text-gray-500">None</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-4 pr-8 text-gray-300">HNDL Protection</td>
+              <td class="py-4 px-6 text-center">
+                <span class="badge-verified">Full coverage</span>
+              </td>
+              <td class="py-4 px-6 text-center text-gray-500">Not addressed</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-4 pr-8 text-gray-300">Migration Tooling</td>
+              <td class="py-4 px-6 text-center">
+                <span class="badge-verified">AI-powered</span>
+              </td>
+              <td class="py-4 px-6 text-center text-gray-500">N/A</td>
+            </tr>
+            <tr>
+              <td class="py-4 pr-8 text-gray-300">CNSA 2.0 Compliance</td>
+              <td class="py-4 px-6 text-center">
+                <span class="badge-verified">Built-in</span>
+              </td>
+              <td class="py-4 px-6 text-center text-gray-500">Manual</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom CTA -->
+  <section class="py-24 border-t border-white/5">
+    <div class="mx-auto max-w-7xl px-6">
+      <div class="relative card glow-electric text-center py-16 px-8">
+        <div class="absolute inset-0 bg-gradient-to-br from-electric/5 to-quantum/5 rounded-xl pointer-events-none"></div>
+        <div class="relative z-10">
+          <h2 class="section-heading mb-4">Start Securing Your <span class="gradient-text">AI Stack</span></h2>
+          <p class="text-gray-400 text-lg max-w-xl mx-auto mb-8">
+            The quantum clock is ticking. Get ahead of the CNSA 2.0 deadline with PQC-native infrastructure today.
+          </p>
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="/dashboard" class="btn-primary text-base px-8 py-3.5">
+              Get Started Free
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+            <a href="/pricing" class="btn-secondary text-base px-8 py-3.5">View Pricing</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</MarketingLayout>

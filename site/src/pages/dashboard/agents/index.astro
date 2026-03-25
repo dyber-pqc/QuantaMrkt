@@ -1,0 +1,92 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+
+const agents = [
+  {
+    id: 'finance-copilot',
+    name: 'acme/finance-copilot',
+    did: 'did:web:acme.corp:agents:finance-copilot',
+    algorithm: 'ML-DSA-65',
+    capabilities: ['read:financial-data', 'write:reports', 'execute:analysis'],
+    delegatedBy: 'did:web:acme.corp:root',
+    status: 'Active',
+  },
+  {
+    id: 'code-reviewer',
+    name: 'acme/code-reviewer',
+    did: 'did:web:acme.corp:agents:code-reviewer',
+    algorithm: 'ML-DSA-87',
+    capabilities: ['read:repositories', 'write:reviews', 'execute:analysis'],
+    delegatedBy: 'did:web:acme.corp:root',
+    status: 'Active',
+  },
+  {
+    id: 'data-pipeline',
+    name: 'globex/data-pipeline',
+    did: 'did:web:globex.io:agents:data-pipeline',
+    algorithm: 'ML-DSA-44',
+    capabilities: ['read:datasets', 'write:transformations', 'execute:etl'],
+    delegatedBy: 'did:web:globex.io:ops',
+    status: 'Active',
+  },
+  {
+    id: 'legacy-monitor',
+    name: 'acme/legacy-monitor',
+    did: 'did:web:acme.corp:agents:legacy-monitor',
+    algorithm: 'ML-DSA-44',
+    capabilities: ['read:logs', 'write:alerts'],
+    delegatedBy: 'did:web:acme.corp:root',
+    status: 'Revoked',
+  },
+];
+---
+
+<DashboardLayout title="Agent Directory">
+  <!-- Header actions -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-400">{agents.length} agents registered</p>
+    <button class="btn-primary text-sm">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+      Register Agent
+    </button>
+  </div>
+
+  <!-- Agent Grid -->
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    {agents.map((agent) => (
+      <a href={`/dashboard/agents/${agent.id}`} class="card-hover group block">
+        <div class="flex items-start justify-between mb-3">
+          <h3 class="font-mono text-sm font-semibold text-white group-hover:text-electric transition-colors">
+            {agent.name}
+          </h3>
+          <span class={`badge ${agent.status === 'Active' ? 'bg-quantum/20 text-quantum' : 'bg-danger/20 text-danger'}`}>
+            {agent.status}
+          </span>
+        </div>
+
+        <div class="space-y-3 text-xs text-gray-400">
+          <div>
+            <span class="text-gray-500">DID:</span>
+            <span class="font-mono ml-1">{agent.did.length > 40 ? agent.did.slice(0, 40) + '...' : agent.did}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-500">Algorithm</span>
+            <span class="font-mono text-electric">{agent.algorithm}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-500">Delegated by</span>
+            <span class="font-mono truncate ml-2 max-w-[200px]">{agent.delegatedBy}</span>
+          </div>
+          <div>
+            <span class="text-gray-500 block mb-1.5">Capabilities</span>
+            <div class="flex flex-wrap gap-1.5">
+              {agent.capabilities.map((cap) => (
+                <span class="rounded bg-white/5 px-2 py-0.5 font-mono text-gray-300">{cap}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </a>
+    ))}
+  </div>
+</DashboardLayout>

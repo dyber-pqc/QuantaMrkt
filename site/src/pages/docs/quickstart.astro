@@ -1,0 +1,93 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+---
+
+<MarketingLayout title="Quickstart" description="Get started with QuantaMrkt in minutes.">
+  <div class="mx-auto max-w-4xl px-6 py-16">
+    <h1 class="section-heading mb-4">Quickstart</h1>
+    <p class="mb-12 text-lg text-gray-400">Get started with QuantaMrkt and the QuantumShield library in minutes.</p>
+
+    <!-- Step 1 -->
+    <section class="mb-12">
+      <h2 class="mb-4 text-2xl font-bold text-white">1. Install QuantumShield</h2>
+      <div class="card overflow-hidden">
+        <pre class="overflow-x-auto font-mono text-sm text-electric"><code>pip install quantumshield</code></pre>
+      </div>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="mb-12">
+      <h2 class="mb-4 text-2xl font-bold text-white">2. Create an Agent Identity</h2>
+      <div class="card overflow-hidden">
+        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code><span class="text-electric">from</span> quantumshield <span class="text-electric">import</span> AgentIdentity
+
+<span class="text-gray-500"># Create a new PQC-native agent identity</span>
+agent = AgentIdentity.create(
+    name=<span class="text-quantum">"my-copilot"</span>,
+    capabilities=[<span class="text-quantum">"read:data"</span>, <span class="text-quantum">"write:reports"</span>]
+)
+
+<span class="text-gray-500"># Sign an action</span>
+credential = agent.sign_action(
+    action=<span class="text-quantum">"generate_report"</span>,
+    target=<span class="text-quantum">"quarterly-financials.pdf"</span>
+)
+
+print(f<span class="text-quantum">"Agent DID: {agent.did}"</span>)
+print(f<span class="text-quantum">"Algorithm: ML-DSA-65"</span>)</code></pre>
+      </div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="mb-12">
+      <h2 class="mb-4 text-2xl font-bold text-white">3. Sign a Model</h2>
+      <div class="card overflow-hidden">
+        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code><span class="text-electric">from</span> quantumshield <span class="text-electric">import</span> ModelManifest
+
+<span class="text-gray-500"># Create a manifest from your model directory</span>
+manifest = ModelManifest.from_model(<span class="text-quantum">"./my-model/"</span>)
+
+<span class="text-gray-500"># Sign with your agent identity</span>
+manifest.sign(agent.signing_keypair)
+
+<span class="text-gray-500"># Push to the registry</span>
+manifest.save(<span class="text-quantum">"./my-model/quantmrkt-manifest.json"</span>)</code></pre>
+      </div>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="mb-12">
+      <h2 class="mb-4 text-2xl font-bold text-white">4. Analyze Your Codebase</h2>
+      <div class="card overflow-hidden">
+        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code><span class="text-gray-500"># CLI usage</span>
+<span class="text-electric">$</span> quantumshield migrate analyze ./src/
+
+<span class="text-warning">CRITICAL</span>: 12 vulnerabilities found
+<span class="text-danger">HIGH</span>:     23 vulnerabilities found
+<span class="text-electric">MEDIUM</span>:   18 vulnerabilities found
+
+<span class="text-gray-500"># Run migration with validation</span>
+<span class="text-electric">$</span> quantumshield migrate run ./src/ --validate-kat</code></pre>
+      </div>
+    </section>
+
+    <!-- Next Steps -->
+    <section class="card glow-electric">
+      <h2 class="mb-4 text-xl font-bold text-white">Next Steps</h2>
+      <ul class="space-y-3">
+        <li>
+          <a href="/docs/api-reference" class="text-electric hover:underline">API Reference</a>
+          <span class="text-gray-400"> — Full REST API documentation</span>
+        </li>
+        <li>
+          <a href="/dashboard" class="text-electric hover:underline">Dashboard</a>
+          <span class="text-gray-400"> — Explore signed models and agent identities</span>
+        </li>
+        <li>
+          <a href="/features" class="text-electric hover:underline">Features</a>
+          <span class="text-gray-400"> — Deep dive into PQ-AID, Migrator, and Shield Registry</span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</MarketingLayout>

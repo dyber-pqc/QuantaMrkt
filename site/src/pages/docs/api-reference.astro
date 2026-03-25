@@ -1,0 +1,97 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+
+const endpoints = [
+  {
+    group: 'Model Registry',
+    routes: [
+      { method: 'GET', path: '/v1/models', description: 'List all signed models' },
+      { method: 'GET', path: '/v1/models/{namespace}', description: 'Get model manifest' },
+      { method: 'POST', path: '/v1/models/{namespace}', description: 'Push model manifest' },
+      { method: 'GET', path: '/v1/models/{namespace}/verify', description: 'Verify model signatures' },
+    ],
+  },
+  {
+    group: 'Agent Directory',
+    routes: [
+      { method: 'GET', path: '/v1/agents', description: 'List registered agents' },
+      { method: 'GET', path: '/v1/agents/{id}', description: 'Get agent identity' },
+      { method: 'POST', path: '/v1/agents', description: 'Register a new agent' },
+      { method: 'GET', path: '/v1/agents/{id}/verify', description: 'Verify agent identity' },
+    ],
+  },
+  {
+    group: 'Migration',
+    routes: [
+      { method: 'POST', path: '/v1/migrate/analyze', description: 'Analyze codebase for crypto vulnerabilities' },
+      { method: 'POST', path: '/v1/migrate/run', description: 'Execute PQC migration' },
+      { method: 'GET', path: '/v1/migrate/report/{id}', description: 'Get migration report' },
+    ],
+  },
+  {
+    group: 'HNDL Assessment',
+    routes: [
+      { method: 'POST', path: '/v1/hndl/assess', description: 'Assess HNDL risk for an artifact' },
+      { method: 'GET', path: '/v1/hndl/database', description: 'Get public risk database' },
+    ],
+  },
+  {
+    group: 'Transparency Log',
+    routes: [
+      { method: 'GET', path: '/v1/transparency/log', description: 'Get log entries' },
+      { method: 'GET', path: '/v1/transparency/proof/{id}', description: 'Get Merkle proof for entry' },
+    ],
+  },
+];
+
+const methodColors: Record<string, string> = {
+  GET: 'text-quantum bg-quantum/10',
+  POST: 'text-electric bg-electric/10',
+  PUT: 'text-warning bg-warning/10',
+  DELETE: 'text-danger bg-danger/10',
+};
+---
+
+<MarketingLayout title="API Reference" description="QuantaMrkt REST API documentation.">
+  <div class="mx-auto max-w-4xl px-6 py-16">
+    <h1 class="section-heading mb-4">API Reference</h1>
+    <p class="mb-4 text-lg text-gray-400">
+      The QuantaMrkt API provides programmatic access to model verification, agent identity management,
+      PQC migration, and HNDL risk assessment.
+    </p>
+
+    <div class="card mb-12">
+      <p class="font-mono text-sm text-gray-300">
+        Base URL: <span class="text-electric">https://api.quantmrkt.com</span>
+      </p>
+      <p class="mt-2 text-sm text-gray-500">
+        All endpoints require authentication via Bearer token. Get your API key from
+        <a href="/dashboard/settings" class="text-electric hover:underline">Settings</a>.
+      </p>
+    </div>
+
+    {endpoints.map((group) => (
+      <section class="mb-12">
+        <h2 class="mb-6 text-2xl font-bold text-white">{group.group}</h2>
+        <div class="space-y-3">
+          {group.routes.map((route) => (
+            <div class="card-hover flex items-center gap-4">
+              <span class:list={['inline-block w-16 rounded px-2 py-1 text-center font-mono text-xs font-bold', methodColors[route.method]]}>
+                {route.method}
+              </span>
+              <code class="font-mono text-sm text-gray-300">{route.path}</code>
+              <span class="ml-auto text-sm text-gray-500">{route.description}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="card glow-electric">
+      <h2 class="mb-4 text-xl font-bold text-white">Authentication</h2>
+      <p class="mb-4 text-gray-400">Include your API key in the Authorization header:</p>
+      <pre class="overflow-x-auto rounded-lg bg-navy-900 p-4 font-mono text-sm text-gray-300"><code>curl -H "Authorization: Bearer qm_your_api_key" \
+     https://api.quantmrkt.com/v1/models</code></pre>
+    </section>
+  </div>
+</MarketingLayout>

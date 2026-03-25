@@ -1,0 +1,119 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+
+const complianceScore = 78;
+
+const checklist = [
+  { label: 'New systems using ML-KEM for key encapsulation', checked: true },
+  { label: 'Firmware signing migrated to ML-DSA', checked: true },
+  { label: 'Certificate infrastructure updated to PQC', checked: true },
+  { label: 'Agent identities quantum-safe', checked: true },
+  { label: 'Legacy TLS endpoints migrated (12 remaining)', checked: false },
+  { label: 'Full audit completed', checked: false },
+];
+
+// Days until January 1, 2027
+const deadline = new Date('2027-01-01T00:00:00');
+const now = new Date();
+const daysRemaining = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+---
+
+<DashboardLayout title="CNSA 2.0 Compliance">
+  <!-- Progress Header -->
+  <div class="card mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div>
+        <h2 class="text-xl font-bold text-white">CNSA 2.0 Compliance Status</h2>
+        <p class="text-sm text-gray-400 mt-1">Track your organization's progress toward quantum-safe readiness</p>
+      </div>
+      <div class="mt-4 sm:mt-0 text-right">
+        <p class="text-4xl font-bold gradient-text">{complianceScore}%</p>
+        <p class="text-xs text-gray-500">Overall Score</p>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="relative">
+      <div class="h-4 rounded-full bg-white/5 overflow-hidden">
+        <div
+          class="h-full rounded-full bg-gradient-to-r from-electric to-quantum transition-all duration-1000"
+          style={`width: ${complianceScore}%`}
+        />
+      </div>
+      <div class="flex justify-between mt-2 text-xs text-gray-500">
+        <span>0%</span>
+        <span>Target: 100% by Jan 2027</span>
+        <span>100%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Checklist -->
+    <div class="lg:col-span-2 card">
+      <h3 class="text-lg font-semibold text-white mb-6">Compliance Checklist</h3>
+      <div class="space-y-4">
+        {checklist.map((item) => (
+          <div class={`flex items-start gap-4 rounded-lg border p-4 transition-colors ${
+            item.checked
+              ? 'border-quantum/20 bg-quantum/5'
+              : 'border-white/5 bg-white/[0.02]'
+          }`}>
+            <div class={`mt-0.5 flex h-5 w-5 items-center justify-center rounded flex-shrink-0 ${
+              item.checked
+                ? 'bg-quantum/20'
+                : 'border border-white/20 bg-transparent'
+            }`}>
+              {item.checked && (
+                <svg class="h-3.5 w-3.5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span class={`text-sm ${item.checked ? 'text-white' : 'text-gray-400'}`}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Deadline & Info -->
+    <div class="space-y-6">
+      <!-- Countdown -->
+      <div class="card text-center">
+        <h3 class="text-lg font-semibold text-white mb-4">Deadline Countdown</h3>
+        <p class="text-5xl font-bold text-warning font-mono">{daysRemaining}</p>
+        <p class="text-sm text-gray-400 mt-2">days until January 2027</p>
+        <div class="mt-4 pt-4 border-t border-white/5">
+          <p class="text-xs text-gray-500">
+            CNSA 2.0 requires all NSS systems to transition to quantum-resistant algorithms by January 1, 2027 for software and firmware signing.
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="card">
+        <h3 class="text-lg font-semibold text-white mb-4">Summary</h3>
+        <div class="space-y-3 text-sm">
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">Items Complete</span>
+            <span class="font-mono text-quantum">{checklist.filter(i => i.checked).length}/{checklist.length}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">Models Signed</span>
+            <span class="font-mono text-white">1,247</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">Agents PQC-Ready</span>
+            <span class="font-mono text-white">891/892</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-400">Legacy Endpoints</span>
+            <span class="font-mono text-warning">12 remaining</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
