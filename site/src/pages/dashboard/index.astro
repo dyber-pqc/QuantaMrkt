@@ -2,97 +2,108 @@
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 
 const stats = [
-  { label: 'Models Signed', value: '1,247', icon: '🔏', color: 'electric' },
-  { label: 'Agents Registered', value: '892', icon: '🤖', color: 'quantum' },
-  { label: 'Migrations Run', value: '156', icon: '🔄', color: 'warning' },
-  { label: 'CNSA 2.0 Ready', value: '78%', icon: '🛡️', color: 'quantum' },
+  { label: 'Models Signed', value: '1,247' },
+  { label: 'Agents Active', value: '892' },
+  { label: 'Migrations', value: '156' },
+  { label: 'CNSA 2.0', value: '78%' },
 ];
 
 const recentActivity = [
-  { action: 'Verified', target: 'meta-llama/Llama-3.1-70B', badge: 'verified', time: '2 minutes ago' },
-  { action: 'Agent registered', target: 'finance-copilot', badge: 'low', time: '14 minutes ago' },
-  { action: 'Migration report completed', target: 'acme/backend', badge: 'medium', time: '1 hour ago' },
-  { action: 'Signed model', target: 'mistral/Mixtral-8x22B', badge: 'verified', time: '3 hours ago' },
-  { action: 'HNDL risk updated', target: 'openai/whisper-large-v3', badge: 'high', time: '5 hours ago' },
+  { action: 'Signature verified', target: 'meta-llama/Llama-3.1-70B', type: 'verified', time: '2m ago' },
+  { action: 'Agent registered', target: 'acme/finance-copilot', type: 'agent', time: '14m ago' },
+  { action: 'Migration complete', target: 'acme/backend-services', type: 'migration', time: '1h ago' },
+  { action: 'Model signed', target: 'mistral/Mixtral-8x22B', type: 'verified', time: '3h ago' },
+  { action: 'HNDL risk updated', target: 'openai/whisper-large-v3', type: 'risk', time: '5h ago' },
+  { action: 'Agent credential renewed', target: 'globex/data-pipeline', type: 'agent', time: '6h ago' },
+  { action: 'Migration started', target: 'globex/api-gateway', type: 'migration', time: '8h ago' },
 ];
 
 const riskDistribution = [
-  { level: 'CRITICAL', count: 23, badge: 'badge-critical' },
-  { level: 'HIGH', count: 47, badge: 'badge-high' },
-  { level: 'MEDIUM', count: 89, badge: 'badge-medium' },
-  { level: 'LOW', count: 134, badge: 'badge-low' },
+  { level: 'CRITICAL', count: 23, color: 'bg-danger', text: 'text-danger' },
+  { level: 'HIGH', count: 47, color: 'bg-warning', text: 'text-warning' },
+  { level: 'MEDIUM', count: 89, color: 'bg-electric', text: 'text-electric' },
+  { level: 'LOW', count: 134, color: 'bg-quantum', text: 'text-quantum' },
 ];
+
+const totalRisk = riskDistribution.reduce((s, r) => s + r.count, 0);
 ---
 
 <DashboardLayout title="Overview">
-  <!-- Stats Row -->
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-    {stats.map((stat) => (
-      <div class="card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-gray-400">{stat.label}</span>
-          <span class="text-lg">{stat.icon}</span>
-        </div>
-        <p class={`text-3xl font-bold ${stat.color === 'electric' ? 'text-electric' : stat.color === 'quantum' ? 'text-quantum' : 'text-warning'}`}>
-          {stat.value}
-        </p>
+  <!-- Compact Stat Bar -->
+  <div class="flex items-center gap-px rounded-lg overflow-hidden border border-white/5 mb-5">
+    {stats.map((stat, i) => (
+      <div class={`flex-1 bg-navy-800 px-4 py-3 ${i > 0 ? 'border-l border-white/5' : ''}`}>
+        <p class="text-lg font-semibold text-white font-mono leading-none">{stat.value}</p>
+        <p class="text-xs text-gray-500 mt-1">{stat.label}</p>
       </div>
     ))}
   </div>
 
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <!-- Quick Actions -->
+  <div class="flex items-center gap-2 mb-5">
+    <a href="/dashboard/models" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
+      Sign Model
+    </a>
+    <a href="/dashboard/agents" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
+      Register Agent
+    </a>
+    <a href="/dashboard/migrate" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
+      Run Migration
+    </a>
+    <a href="/dashboard/compliance" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
+      Compliance
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-4">
     <!-- Recent Activity -->
-    <div class="lg:col-span-2 card">
-      <h2 class="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-      <div class="space-y-4">
-        {recentActivity.map((item) => (
-          <div class="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
-            <div class={`h-2 w-2 rounded-full flex-shrink-0 ${
-              item.badge === 'verified' ? 'bg-quantum' :
-              item.badge === 'high' ? 'bg-warning' :
-              item.badge === 'medium' ? 'bg-electric' : 'bg-quantum'
-            }`} />
-            <div class="flex-1 min-w-0">
-              <p class="text-sm text-white">
-                {item.action}
-                <span class="font-mono text-electric ml-1">{item.target}</span>
-              </p>
-            </div>
-            <span class="text-xs text-gray-500 whitespace-nowrap">{item.time}</span>
-          </div>
-        ))}
+    <div class="lg:col-span-3 rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</h2>
+        <span class="text-xs text-gray-600">{recentActivity.length} events</span>
       </div>
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="border-b border-white/5 text-gray-500">
+            <th class="text-left font-medium px-4 py-2">Time</th>
+            <th class="text-left font-medium px-4 py-2">Action</th>
+            <th class="text-left font-medium px-4 py-2">Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recentActivity.map((item, i) => (
+            <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+              <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{item.time}</td>
+              <td class="px-4 py-2 text-gray-300">{item.action}</td>
+              <td class="px-4 py-2">
+                <span class="font-mono text-gray-400">{item.target}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
 
     <!-- HNDL Risk Distribution -->
-    <div class="card">
-      <h2 class="text-lg font-semibold text-white mb-4">HNDL Risk Distribution</h2>
-      <div class="space-y-4">
+    <div class="rounded-lg border border-white/5 bg-navy-800">
+      <div class="px-4 py-2.5 border-b border-white/5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk</h2>
+      </div>
+      <div class="p-4 space-y-3">
         {riskDistribution.map((item) => (
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class={item.badge}>{item.level}</span>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-gray-500">{item.level}</span>
+              <span class={`text-xs font-mono font-medium ${item.text}`}>{item.count}</span>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="w-24 h-2 rounded-full bg-white/5 overflow-hidden">
-                <div
-                  class={`h-full rounded-full ${
-                    item.level === 'CRITICAL' ? 'bg-danger' :
-                    item.level === 'HIGH' ? 'bg-warning' :
-                    item.level === 'MEDIUM' ? 'bg-electric' : 'bg-quantum'
-                  }`}
-                  style={`width: ${(item.count / 134) * 100}%`}
-                />
-              </div>
-              <span class="text-sm font-mono text-gray-400 w-8 text-right">{item.count}</span>
+            <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
+              <div class={`h-full rounded-full ${item.color}`} style={`width: ${(item.count / totalRisk) * 100}%`} />
             </div>
           </div>
         ))}
-      </div>
-      <div class="mt-6 pt-4 border-t border-white/5">
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-gray-400">Total Assessed</span>
-          <span class="font-semibold text-white font-mono">293</span>
+        <div class="pt-3 border-t border-white/5 flex items-center justify-between">
+          <span class="text-xs text-gray-500">Total</span>
+          <span class="text-xs font-mono text-gray-300">{totalRisk}</span>
         </div>
       </div>
     </div>

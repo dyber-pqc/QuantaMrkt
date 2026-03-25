@@ -12,65 +12,54 @@ const checklist = [
   { label: 'Full audit completed', checked: false },
 ];
 
-// Days until January 1, 2027
 const deadline = new Date('2027-01-01T00:00:00');
 const now = new Date();
 const daysRemaining = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+const completed = checklist.filter(i => i.checked).length;
 ---
 
 <DashboardLayout title="CNSA 2.0 Compliance">
-  <!-- Progress Header -->
-  <div class="card mb-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-      <div>
-        <h2 class="text-xl font-bold text-white">CNSA 2.0 Compliance Status</h2>
-        <p class="text-sm text-gray-400 mt-1">Track your organization's progress toward quantum-safe readiness</p>
+  <!-- Progress Bar Row -->
+  <div class="rounded-lg border border-white/5 bg-navy-800 p-4 mb-5">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-300">CNSA 2.0 Compliance</span>
+        <span class="text-xs text-gray-500">{completed}/{checklist.length} items</span>
       </div>
-      <div class="mt-4 sm:mt-0 text-right">
-        <p class="text-4xl font-bold gradient-text">{complianceScore}%</p>
-        <p class="text-xs text-gray-500">Overall Score</p>
-      </div>
-    </div>
-
-    <!-- Progress Bar -->
-    <div class="relative">
-      <div class="h-4 rounded-full bg-white/5 overflow-hidden">
-        <div
-          class="h-full rounded-full bg-gradient-to-r from-electric to-quantum transition-all duration-1000"
-          style={`width: ${complianceScore}%`}
-        />
-      </div>
-      <div class="flex justify-between mt-2 text-xs text-gray-500">
-        <span>0%</span>
-        <span>Target: 100% by Jan 2027</span>
-        <span>100%</span>
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-semibold font-mono text-white">{complianceScore}%</span>
+        <span class="text-xs text-gray-500">|</span>
+        <span class="text-xs text-warning font-mono">{daysRemaining}d remaining</span>
       </div>
     </div>
+    <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
+      <div
+        class="h-full rounded-full bg-gradient-to-r from-electric to-quantum"
+        style={`width: ${complianceScore}%`}
+      />
+    </div>
+    <p class="text-[11px] text-gray-600 mt-1.5">Target: 100% by January 1, 2027 (software and firmware signing)</p>
   </div>
 
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-4">
     <!-- Checklist -->
-    <div class="lg:col-span-2 card">
-      <h3 class="text-lg font-semibold text-white mb-6">Compliance Checklist</h3>
-      <div class="space-y-4">
-        {checklist.map((item) => (
-          <div class={`flex items-start gap-4 rounded-lg border p-4 transition-colors ${
-            item.checked
-              ? 'border-quantum/20 bg-quantum/5'
-              : 'border-white/5 bg-white/[0.02]'
-          }`}>
-            <div class={`mt-0.5 flex h-5 w-5 items-center justify-center rounded flex-shrink-0 ${
-              item.checked
-                ? 'bg-quantum/20'
-                : 'border border-white/20 bg-transparent'
+    <div class="lg:col-span-3 rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-white/5">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Compliance Checklist</h2>
+      </div>
+      <div class="divide-y divide-white/[0.03]">
+        {checklist.map((item, i) => (
+          <div class={`flex items-center gap-3 px-4 py-3 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+            <div class={`flex h-4 w-4 items-center justify-center rounded flex-shrink-0 ${
+              item.checked ? 'bg-quantum/20' : 'border border-white/15'
             }`}>
               {item.checked && (
-                <svg class="h-3.5 w-3.5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                <svg class="h-2.5 w-2.5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                 </svg>
               )}
             </div>
-            <span class={`text-sm ${item.checked ? 'text-white' : 'text-gray-400'}`}>
+            <span class={`text-sm ${item.checked ? 'text-gray-300' : 'text-gray-500'}`}>
               {item.label}
             </span>
           </div>
@@ -78,38 +67,29 @@ const daysRemaining = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 6
       </div>
     </div>
 
-    <!-- Deadline & Info -->
-    <div class="space-y-6">
-      <!-- Countdown -->
-      <div class="card text-center">
-        <h3 class="text-lg font-semibold text-white mb-4">Deadline Countdown</h3>
-        <p class="text-5xl font-bold text-warning font-mono">{daysRemaining}</p>
-        <p class="text-sm text-gray-400 mt-2">days until January 2027</p>
-        <div class="mt-4 pt-4 border-t border-white/5">
-          <p class="text-xs text-gray-500">
-            CNSA 2.0 requires all NSS systems to transition to quantum-resistant algorithms by January 1, 2027 for software and firmware signing.
-          </p>
-        </div>
+    <!-- Sidebar Summary -->
+    <div class="space-y-5">
+      <!-- Deadline -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 p-4">
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Deadline</h3>
+        <p class="text-2xl font-bold text-warning font-mono">{daysRemaining}</p>
+        <p class="text-xs text-gray-500 mt-0.5">days until Jan 2027</p>
       </div>
 
       <!-- Quick Stats -->
-      <div class="card">
-        <h3 class="text-lg font-semibold text-white mb-4">Summary</h3>
-        <div class="space-y-3 text-sm">
+      <div class="rounded-lg border border-white/5 bg-navy-800 p-4">
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Summary</h3>
+        <div class="space-y-2 text-xs">
           <div class="flex items-center justify-between">
-            <span class="text-gray-400">Items Complete</span>
-            <span class="font-mono text-quantum">{checklist.filter(i => i.checked).length}/{checklist.length}</span>
+            <span class="text-gray-500">Models Signed</span>
+            <span class="font-mono text-gray-300">1,247</span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-gray-400">Models Signed</span>
-            <span class="font-mono text-white">1,247</span>
+            <span class="text-gray-500">Agents PQC-Ready</span>
+            <span class="font-mono text-gray-300">891/892</span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-gray-400">Agents PQC-Ready</span>
-            <span class="font-mono text-white">891/892</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-400">Legacy Endpoints</span>
+            <span class="text-gray-500">Legacy Endpoints</span>
             <span class="font-mono text-warning">12 remaining</span>
           </div>
         </div>

@@ -21,22 +21,36 @@ const report = {
       severity: 'CRITICAL',
       file: 'src/auth/jwt.ts',
       line: 42,
-      description: 'RSA-2048 key used for JWT signing — vulnerable to Shor\'s algorithm on cryptographically relevant quantum computers.',
+      description: 'RSA-2048 key used for JWT signing -- vulnerable to Shor\'s algorithm on cryptographically relevant quantum computers.',
       replacement: 'Replace with ML-DSA-65 using @quantmrkt/pqc-jose library.',
     },
     {
       severity: 'CRITICAL',
       file: 'src/crypto/keyExchange.ts',
       line: 118,
-      description: 'ECDH P-256 key exchange — quantum-vulnerable elliptic curve Diffie-Hellman.',
+      description: 'ECDH P-256 key exchange -- quantum-vulnerable elliptic curve Diffie-Hellman.',
       replacement: 'Replace with ML-KEM-768 hybrid key encapsulation (X25519 + ML-KEM).',
     },
     {
       severity: 'CRITICAL',
       file: 'src/tls/config.ts',
       line: 23,
-      description: 'TLS 1.2 configuration with RSA key exchange — no forward secrecy against quantum adversaries.',
+      description: 'TLS 1.2 configuration with RSA key exchange -- no forward secrecy against quantum adversaries.',
       replacement: 'Upgrade to TLS 1.3 with ML-KEM-768 key agreement via hybrid mode.',
+    },
+    {
+      severity: 'HIGH',
+      file: 'src/auth/session.ts',
+      line: 87,
+      description: 'HMAC-SHA-256 session tokens may need longer key lengths for quantum resistance.',
+      replacement: 'Extend to HMAC-SHA-384 or use KMAC-256 for session integrity.',
+    },
+    {
+      severity: 'MEDIUM',
+      file: 'src/utils/hash.ts',
+      line: 15,
+      description: 'SHA-256 hashing used for content addressing -- Grover\'s algorithm reduces effective security to 128 bits.',
+      replacement: 'Consider SHA-384 or SHA3-256 for long-term integrity requirements.',
     },
   ],
   effort: {
@@ -44,130 +58,135 @@ const report = {
     manual: 15,
     total: 67,
     timeEstimate: '3-4 weeks',
-    costEstimate: '$35,000 - $50,000',
+    costEstimate: '$35k - $50k',
   },
 };
-
 
 const total = report.breakdown.critical + report.breakdown.high + report.breakdown.medium + report.breakdown.low;
 ---
 
 <DashboardLayout title="Migration Report">
-  <!-- Back link -->
-  <a href="/dashboard/migrate" class="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-electric transition-colors mb-6">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-    Back to Migration Hub
+  <a href="/dashboard/migrate" class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors mb-3">
+    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+    Migration Hub
   </a>
 
-  <!-- Repo Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
     <div>
-      <h2 class="font-mono text-xl font-bold text-white">{report.repo}</h2>
-      <p class="text-sm text-gray-400 mt-1">Scanned on {report.date}</p>
+      <h2 class="font-mono text-base font-semibold text-white">{report.repo}</h2>
+      <p class="text-xs text-gray-500 mt-0.5">Scanned on {report.date}</p>
     </div>
-    <button class="btn-secondary mt-4 sm:mt-0 text-sm">
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+    <button class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/10 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
       Export PDF
     </button>
   </div>
 
-  <!-- Summary Stats -->
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-    <div class="card text-center">
-      <p class="text-3xl font-bold text-white font-mono">{report.filesScanned.toLocaleString()}</p>
-      <p class="text-sm text-gray-400 mt-1">Files Scanned</p>
-    </div>
-    <div class="card text-center">
-      <p class="text-3xl font-bold text-electric font-mono">{report.filesWithCrypto}</p>
-      <p class="text-sm text-gray-400 mt-1">Files with Crypto</p>
-    </div>
-    <div class="card text-center">
-      <p class="text-3xl font-bold text-danger font-mono">{report.totalVulnerabilities}</p>
-      <p class="text-sm text-gray-400 mt-1">Total Vulnerabilities</p>
-    </div>
-  </div>
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-4">
+    <!-- Main Content -->
+    <div class="lg:col-span-3 space-y-5">
+      <!-- Summary Stat Bar -->
+      <div class="flex items-center gap-px rounded-lg overflow-hidden border border-white/5">
+        <div class="flex-1 bg-navy-800 px-4 py-3">
+          <p class="text-lg font-semibold text-white font-mono leading-none">{report.filesScanned.toLocaleString()}</p>
+          <p class="text-xs text-gray-500 mt-1">Files Scanned</p>
+        </div>
+        <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
+          <p class="text-lg font-semibold text-electric font-mono leading-none">{report.filesWithCrypto}</p>
+          <p class="text-xs text-gray-500 mt-1">With Crypto</p>
+        </div>
+        <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
+          <p class="text-lg font-semibold text-danger font-mono leading-none">{report.totalVulnerabilities}</p>
+          <p class="text-xs text-gray-500 mt-1">Vulnerabilities</p>
+        </div>
+      </div>
 
-  <!-- Breakdown Bar -->
-  <div class="card mb-6">
-    <h3 class="text-lg font-semibold text-white mb-4">Vulnerability Breakdown</h3>
-    <div class="flex h-4 rounded-full overflow-hidden mb-4">
-      <div class="bg-danger" style={`width: ${(report.breakdown.critical / total) * 100}%`} />
-      <div class="bg-warning" style={`width: ${(report.breakdown.high / total) * 100}%`} />
-      <div class="bg-electric" style={`width: ${(report.breakdown.medium / total) * 100}%`} />
-      <div class="bg-quantum" style={`width: ${(report.breakdown.low / total) * 100}%`} />
-    </div>
-    <div class="flex flex-wrap gap-6 text-sm">
-      <div class="flex items-center gap-2">
-        <div class="h-3 w-3 rounded-sm bg-danger" />
-        <span class="text-gray-400">Critical</span>
-        <span class="font-mono font-semibold text-white">{report.breakdown.critical}</span>
+      <!-- Breakdown Bar -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 p-4">
+        <div class="flex h-2 rounded-full overflow-hidden mb-3">
+          <div class="bg-danger" style={`width: ${(report.breakdown.critical / total) * 100}%`} />
+          <div class="bg-warning" style={`width: ${(report.breakdown.high / total) * 100}%`} />
+          <div class="bg-electric" style={`width: ${(report.breakdown.medium / total) * 100}%`} />
+          <div class="bg-quantum" style={`width: ${(report.breakdown.low / total) * 100}%`} />
+        </div>
+        <div class="flex items-center gap-5 text-xs">
+          <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-danger" /><span class="text-gray-500">Critical</span><span class="font-mono text-gray-300">{report.breakdown.critical}</span></span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-warning" /><span class="text-gray-500">High</span><span class="font-mono text-gray-300">{report.breakdown.high}</span></span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-electric" /><span class="text-gray-500">Medium</span><span class="font-mono text-gray-300">{report.breakdown.medium}</span></span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-sm bg-quantum" /><span class="text-gray-500">Low</span><span class="font-mono text-gray-300">{report.breakdown.low}</span></span>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="h-3 w-3 rounded-sm bg-warning" />
-        <span class="text-gray-400">High</span>
-        <span class="font-mono font-semibold text-white">{report.breakdown.high}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="h-3 w-3 rounded-sm bg-electric" />
-        <span class="text-gray-400">Medium</span>
-        <span class="font-mono font-semibold text-white">{report.breakdown.medium}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="h-3 w-3 rounded-sm bg-quantum" />
-        <span class="text-gray-400">Low</span>
-        <span class="font-mono font-semibold text-white">{report.breakdown.low}</span>
-      </div>
-    </div>
-  </div>
 
-  <!-- Critical Findings -->
-  <div class="card mb-6">
-    <h3 class="text-lg font-semibold text-white mb-4">Critical Findings</h3>
-    <div class="space-y-4">
-      {report.findings.map((finding) => (
-        <div class="rounded-lg border border-danger/20 bg-danger/5 p-4">
-          <div class="flex items-start justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <span class="badge-critical">{finding.severity}</span>
-              <span class="font-mono text-sm text-white">{finding.file}</span>
-              <span class="text-xs text-gray-500">line {finding.line}</span>
+      <!-- Findings Table -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Findings</h3>
+          <span class="text-xs text-gray-600">{report.findings.length} shown</span>
+        </div>
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-white/5 text-gray-500">
+              <th class="text-left font-medium px-4 py-2 w-16">Severity</th>
+              <th class="text-left font-medium px-4 py-2">Location</th>
+              <th class="text-left font-medium px-4 py-2">Description</th>
+              <th class="text-left font-medium px-4 py-2 hidden lg:table-cell">Fix</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.findings.map((finding, i) => (
+              <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <td class="px-4 py-2.5">
+                  <span class={finding.severity === 'CRITICAL' ? 'badge-critical' : finding.severity === 'HIGH' ? 'badge-high' : 'badge-medium'}>
+                    {finding.severity}
+                  </span>
+                </td>
+                <td class="px-4 py-2.5 whitespace-nowrap">
+                  <span class="font-mono text-gray-300">{finding.file}</span>
+                  <span class="text-gray-600 ml-1">:{finding.line}</span>
+                </td>
+                <td class="px-4 py-2.5 text-gray-400 max-w-xs">
+                  <p class="line-clamp-2">{finding.description}</p>
+                </td>
+                <td class="px-4 py-2.5 hidden lg:table-cell">
+                  <p class="font-mono text-quantum/80 line-clamp-2">{finding.replacement}</p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sidebar: Effort Estimate -->
+    <div class="space-y-5">
+      <div class="rounded-lg border border-white/5 bg-navy-800 p-4">
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Effort Estimate</h3>
+        <div class="space-y-3 text-xs">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-gray-500">Automated</span>
+              <span class="font-mono text-quantum">{report.effort.automated}/{report.effort.total}</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
+              <div class="h-full rounded-full bg-quantum" style={`width: ${(report.effort.automated / report.effort.total) * 100}%`} />
             </div>
           </div>
-          <p class="text-sm text-gray-300 mb-3">{finding.description}</p>
-          <div class="rounded-md bg-navy-900/80 p-3">
-            <p class="text-xs text-gray-500 mb-1">Recommended fix:</p>
-            <p class="text-sm text-quantum font-mono">{finding.replacement}</p>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-500">Manual Review</span>
+            <span class="font-mono text-warning">{report.effort.manual}</span>
           </div>
+          <div class="pt-3 border-t border-white/5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-gray-500">Timeline</span>
+              <span class="text-gray-300 font-medium">{report.effort.timeEstimate}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500">Cost</span>
+              <span class="text-gray-300 font-medium">{report.effort.costEstimate}</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-600 pt-2 border-t border-white/5">Based on team of 2 engineers, including testing and validation.</p>
         </div>
-      ))}
-    </div>
-  </div>
-
-  <!-- Effort Estimate -->
-  <div class="card">
-    <h3 class="text-lg font-semibold text-white mb-4">Migration Effort Estimate</h3>
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      <div>
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Automated Fixes</p>
-        <p class="text-2xl font-bold text-quantum font-mono">{report.effort.automated}<span class="text-sm text-gray-500">/{report.effort.total}</span></p>
-        <div class="mt-2 h-2 rounded-full bg-white/5 overflow-hidden">
-          <div class="h-full rounded-full bg-quantum" style={`width: ${(report.effort.automated / report.effort.total) * 100}%`} />
-        </div>
-      </div>
-      <div>
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Manual Review</p>
-        <p class="text-2xl font-bold text-warning font-mono">{report.effort.manual}</p>
-        <p class="text-xs text-gray-500 mt-2">Requires developer intervention</p>
-      </div>
-      <div>
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Time Estimate</p>
-        <p class="text-2xl font-bold text-white">{report.effort.timeEstimate}</p>
-        <p class="text-xs text-gray-500 mt-2">Based on team of 2 engineers</p>
-      </div>
-      <div>
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Estimated Cost</p>
-        <p class="text-2xl font-bold text-electric">{report.effort.costEstimate}</p>
-        <p class="text-xs text-gray-500 mt-2">Including testing & validation</p>
       </div>
     </div>
   </div>

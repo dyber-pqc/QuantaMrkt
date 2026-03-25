@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import { DASHBOARD_NAV, SITE } from '../lib/constants';
+import type { User } from '../lib/auth';
 
 interface Props {
   title?: string;
@@ -9,6 +10,7 @@ interface Props {
 
 const { title, description } = Astro.props;
 const currentPath = Astro.url.pathname;
+const user = (Astro.locals as any).user as User | undefined;
 
 function isActive(href: string): boolean {
   if (href === '/dashboard') return currentPath === '/dashboard';
@@ -59,14 +61,28 @@ function isActive(href: string): boolean {
         <!-- Bottom section -->
         <div class="border-t border-white/5 p-4">
           <div class="flex items-center gap-3">
-            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-electric/20 text-sm font-bold text-electric">
-              U
-            </div>
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.login}
+                class="h-8 w-8 rounded-full border border-white/10"
+              />
+            ) : (
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-electric/20 text-sm font-bold text-electric">
+                U
+              </div>
+            )}
             <div class="flex-1 min-w-0">
-              <p class="truncate text-sm font-medium text-white">User</p>
-              <p class="truncate text-xs text-gray-500">Free tier</p>
+              <p class="truncate text-sm font-medium text-white">{user?.name || user?.login || 'User'}</p>
+              <p class="truncate text-xs text-gray-500 capitalize">{user?.tier || 'free'} tier</p>
             </div>
           </div>
+          <a
+            href="/api/auth/logout"
+            class="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            Sign Out
+          </a>
         </div>
       </div>
     </aside>

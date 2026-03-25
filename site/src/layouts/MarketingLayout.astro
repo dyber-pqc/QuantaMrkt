@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import { NAV_ITEMS, SITE } from '../lib/constants';
+import type { User } from '../lib/auth';
 
 interface Props {
   title?: string;
@@ -9,6 +10,7 @@ interface Props {
 
 const { title, description } = Astro.props;
 const currentPath = Astro.url.pathname;
+const user = (Astro.locals as any).user as User | undefined;
 ---
 
 <BaseLayout title={title} description={description}>
@@ -40,9 +42,20 @@ const currentPath = Astro.url.pathname;
         <a href={SITE.github} class="btn-ghost text-sm" target="_blank" rel="noopener">
           GitHub
         </a>
-        <a href="/dashboard" class="btn-primary text-sm">
-          Get Started
-        </a>
+        {user ? (
+          <a href="/dashboard" class="flex items-center gap-2 text-sm text-white hover:text-electric transition-colors">
+            <img
+              src={user.avatar_url}
+              alt={user.login}
+              class="h-7 w-7 rounded-full border border-white/10"
+            />
+            <span class="hidden sm:inline">{user.name || user.login}</span>
+          </a>
+        ) : (
+          <a href="/api/auth/login" class="btn-primary text-sm">
+            Sign In
+          </a>
+        )}
       </div>
     </nav>
   </header>
