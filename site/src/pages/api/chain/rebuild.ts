@@ -1,7 +1,14 @@
 import type { APIRoute } from 'astro';
 import { createGenesisBlock, createBlock } from '../../../lib/pqc-chain';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '../../../lib/rate-limit';
 
-export const POST: APIRoute = async ({ locals }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
+  // Rate limit: 1 per 10 minutes
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`rebuild:${ip}`, 1, 600_000)) {
+    return rateLimitResponse();
+  }
+
   try {
     const db = (locals as any).runtime?.env?.DB;
     if (!db) {

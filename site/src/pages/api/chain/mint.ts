@@ -1,10 +1,17 @@
 import type { APIRoute } from 'astro';
 import { getApiUser } from '../../../lib/api-auth';
 import { createBlock } from '../../../lib/pqc-chain';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '../../../lib/rate-limit';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const json = (obj: unknown, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+
+  // Rate limit: 5 per minute
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`mint:${ip}`, 5, 60_000)) {
+    return rateLimitResponse();
+  }
 
   try {
     // Require authentication

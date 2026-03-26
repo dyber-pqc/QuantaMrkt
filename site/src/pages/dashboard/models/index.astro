@@ -10,7 +10,7 @@ let models: any[] = [];
 if (db && user) {
   const dbUser = await getUserByGithubId(db, (user as any).id ?? (user as any).github_id);
   if (dbUser) {
-    models = await getUserModels(db, dbUser.id);
+    models = await getUserModels(db, dbUser.login);
   }
 }
 
@@ -74,6 +74,13 @@ function parseTags(tags: string | null | undefined): string[] {
               <div class="hidden sm:flex flex-col items-end gap-1 flex-shrink-0 text-right">
                 <span class="text-[11px] text-gray-500">{formatDownloads(model.downloads ?? 0)} downloads</span>
                 <span class="text-[10px] text-gray-600">{model.sig_count ?? model.signature_count ?? 0} signatures</span>
+                <button
+                  data-delete-model={model.slug}
+                  class="mt-1 inline-flex items-center gap-1 rounded-md bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+                  onclick="event.preventDefault(); event.stopPropagation();"
+                >
+                  Delete
+                </button>
               </div>
             </a>
           );
@@ -140,4 +147,36 @@ function parseTags(tags: string | null | undefined): string[] {
       </div>
     </div>
   )}
+  <script>
+    document.querySelectorAll('[data-delete-model]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const slug = (btn as HTMLElement).dataset.deleteModel;
+        if (!slug) return;
+        if (!confirm(`Are you sure you want to delete "${slug}"? This cannot be undone.`)) return;
+
+        (btn as HTMLButtonElement).disabled = true;
+        (btn as HTMLButtonElement).textContent = 'Deleting...';
+
+        try {
+          const res = await fetch(`/api/models/${slug}/delete`, { method: 'DELETE' });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            // Remove the row from the DOM
+            const row = (btn as HTMLElement).closest('a');
+            if (row) row.remove();
+          } else {
+            alert(data.error || 'Failed to delete model.');
+            (btn as HTMLButtonElement).disabled = false;
+            (btn as HTMLButtonElement).textContent = 'Delete';
+          }
+        } catch {
+          alert('Failed to delete model. Please try again.');
+          (btn as HTMLButtonElement).disabled = false;
+          (btn as HTMLButtonElement).textContent = 'Delete';
+        }
+      });
+    });
+  </script>
 </DashboardLayout>

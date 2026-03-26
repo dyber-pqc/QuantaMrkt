@@ -8,6 +8,15 @@ interface Props {
 
 const { title = 'QuantaMrkt', description = 'The Quantum-Safe AI Marketplace' } = Astro.props;
 const fullTitle = title === 'QuantaMrkt' ? title : `${title} | QuantaMrkt`;
+const canonicalUrl = new URL(Astro.url.pathname, 'https://quantamrkt.com').href;
+
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'QuantaMrkt',
+  url: 'https://quantamrkt.com',
+  description: 'The Quantum-Safe AI Marketplace',
+});
 ---
 
 <!doctype html>
@@ -16,12 +25,20 @@ const fullTitle = title === 'QuantaMrkt' ? title : `${title} | QuantaMrkt`;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://quantmrkt.com" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content="https://quantamrkt.com/og-image.png" />
+    <meta property="og:site_name" content="QuantaMrkt" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://quantamrkt.com/og-image.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{fullTitle}</title>
+    <script type="application/ld+json" set:html={jsonLd} />
   </head>
   <body>
     <slot />

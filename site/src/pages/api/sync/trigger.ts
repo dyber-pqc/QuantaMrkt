@@ -2,10 +2,17 @@ import type { APIRoute } from 'astro';
 import { getApiUser } from '../../../lib/api-auth';
 import { syncHuggingFaceModels } from '../../../lib/hf-sync';
 import { createBlock } from '../../../lib/pqc-chain';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '../../../lib/rate-limit';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const json = (obj: unknown, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+
+  // Rate limit: 1 per minute
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`sync:${ip}`, 1, 60_000)) {
+    return rateLimitResponse();
+  }
 
   try {
     // Require authentication (admin check: for now, any logged-in user)

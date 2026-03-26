@@ -268,8 +268,8 @@ function timeAgo(dateStr: string): string {
         </div>
         <div class="p-4 space-y-2.5">
           {[
-            { done: true, label: 'Install CLI', detail: 'pip install quantumshield', href: '/docs/quickstart' },
-            { done: true, label: 'Authenticate', detail: 'quantumshield login', href: '/docs/quickstart' },
+            { done: false, label: 'Install CLI', detail: 'pip install quantumshield', href: '/docs/quickstart' },
+            { done: !!user, label: 'Authenticate', detail: 'quantumshield login', href: '/docs/quickstart' },
             { done: hasAgents, label: 'Create signing identity', detail: 'Register a PQC agent', href: '/dashboard/agents' },
             { done: hasModels, label: 'Push your first model', detail: 'Sign and publish a model', href: '/docs/quickstart' },
             { done: hasVerifications, label: 'Verify a model', detail: 'Run verification on a model', href: '/models' },
@@ -291,9 +291,9 @@ function timeAgo(dateStr: string): string {
         </div>
         <div class="px-4 py-2.5 border-t border-white/5 bg-white/[0.01]">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] text-gray-500">{[true, true, hasAgents, hasModels, hasVerifications].filter(Boolean).length}/5 complete</span>
+            <span class="text-[10px] text-gray-500">{[false, !!user, hasAgents, hasModels, hasVerifications].filter(Boolean).length}/5 complete</span>
             <div class="w-20 h-1 rounded-full bg-white/5 overflow-hidden">
-              <div class="h-full rounded-full bg-electric transition-all" style={`width: ${([true, true, hasAgents, hasModels, hasVerifications].filter(Boolean).length / 5) * 100}%`} />
+              <div class="h-full rounded-full bg-electric transition-all" style={`width: ${([false, !!user, hasAgents, hasModels, hasVerifications].filter(Boolean).length / 5) * 100}%`} />
             </div>
           </div>
         </div>

@@ -25,6 +25,7 @@ export const DASHBOARD_NAV = [
   { label: 'Migrate', href: '/dashboard/migrate', icon: 'arrow-right-left' },
   { label: 'Compliance', href: '/dashboard/compliance', icon: 'shield-check' },
   { label: 'Marketplace', href: '/models', icon: 'store' },
+  { label: 'Profile', href: '/dashboard/profile', icon: 'user' },
   { label: 'Settings', href: '/dashboard/settings', icon: 'settings' },
 ] as const;
 

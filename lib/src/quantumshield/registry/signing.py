@@ -56,6 +56,10 @@ class ShieldRegistry:
     def push(self, manifest: ModelManifest, namespace: str) -> dict[str, Any]:
         """Push a signed manifest to the registry.
 
+        The API expects ``{version, manifestHash, files, signatures}`` where
+        ``files`` is a list of ``{filename, hash, size}`` and ``signatures``
+        is a list of ``{signerDid, algorithm, signatureHex, attestationType}``.
+
         Args:
             manifest: The signed model manifest to push.
             namespace: org/model-name slug.
@@ -70,8 +74,34 @@ class ShieldRegistry:
         if not manifest.signatures:
             raise ValueError("Cannot push an unsigned manifest. Sign it first.")
 
+        import hashlib as _hashlib
+
         url = f"{self.api_url}/api/models/{namespace}/versions"
-        payload = manifest.model_dump(mode="json")
+
+        # Build the payload shape expected by the versions API
+        manifest_hash = _hashlib.sha3_256(manifest._canonical_bytes()).hexdigest()
+        payload: dict[str, Any] = {
+            "version": manifest.model.version or "0.0.1",
+            "manifestHash": manifest_hash,
+            "files": [
+                {
+                    "filename": f.path,
+                    "hash": f.hash_value,
+                    "size": f.size,
+                }
+                for f in manifest.files
+            ],
+            "signatures": [
+                {
+                    "signerDid": s.signer,
+                    "algorithm": s.algorithm,
+                    "signatureHex": s.signature,
+                    "attestationType": s.attestation_type,
+                }
+                for s in manifest.signatures
+            ],
+        }
+
         resp = httpx.post(url, json=payload, headers=self._headers(), timeout=60)
         self._raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]
@@ -143,16 +173,30 @@ class ShieldRegistry:
         """Create a new model entry in the registry.
 
         Args:
-            namespace: org/model-name slug.
-            metadata: Optional model metadata dict.
+            namespace: org/model-name slug (e.g. "org/model-name").
+            metadata: Optional model metadata dict (name, author, description, etc.).
 
         Returns:
             Response dict from the API.
         """
         url = f"{self.api_url}/api/models"
-        payload: dict[str, Any] = {"slug": namespace}
+
+        # Derive name and author from the slug if not provided in metadata
+        parts = namespace.split("/", 1)
+        if len(parts) == 2:
+            default_author, default_name = parts
+        else:
+            default_author = "unknown"
+            default_name = parts[0]
+
+        payload: dict[str, Any] = {
+            "slug": namespace,
+            "name": default_name,
+            "author": default_author,
+        }
         if metadata:
-            payload["metadata"] = metadata
+            payload.update(metadata)
+
         resp = httpx.post(url, json=payload, headers=self._headers(), timeout=30)
         self._raise_for_status(resp)
         return resp.json()  # type: ignore[no-any-return]

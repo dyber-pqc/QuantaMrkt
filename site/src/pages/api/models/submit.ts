@@ -3,10 +3,17 @@ import { createModel, createVersion, logActivity } from '../../../lib/db';
 import { getApiUser } from '../../../lib/api-auth';
 import { appendLogEntry, sha256 } from '../../../lib/transparency';
 import { createBlock } from '../../../lib/pqc-chain';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '../../../lib/rate-limit';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const json = (obj: unknown, status = 200) =>
     new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+
+  // Rate limit: 10 per minute
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`submit:${ip}`, 10, 60_000)) {
+    return rateLimitResponse();
+  }
 
   try {
     // Require authentication
