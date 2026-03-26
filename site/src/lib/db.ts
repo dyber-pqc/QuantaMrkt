@@ -15,6 +15,10 @@ export interface Model {
   downloads: number;
   likes: number;
   verified: number;
+  source_url: string | null;
+  source_platform: string | null;
+  hf_repo_id: string | null;
+  ollama_name: string | null;
   created_at: string;
   updated_at: string;
   // Joined fields
