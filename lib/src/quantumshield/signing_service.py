@@ -64,11 +64,16 @@ class PQCSigningService:
         pk_hex = os.environ.get("PLATFORM_ML_DSA_PUBLIC_KEY")
         sk_hex = os.environ.get("PLATFORM_ML_DSA_PRIVATE_KEY")
 
-        if pk_hex and sk_hex:
-            self.public_key = bytes.fromhex(pk_hex)
-            self.private_key = bytes.fromhex(sk_hex)
-            print(f"Loaded existing {ALGORITHM} platform key ({len(self.public_key)} bytes)")
+        if pk_hex and sk_hex and len(pk_hex) > 20 and len(sk_hex) > 20:
+            try:
+                self.public_key = bytes.fromhex(pk_hex)
+                self.private_key = bytes.fromhex(sk_hex)
+                print(f"Loaded existing {ALGORITHM} platform key ({len(self.public_key)} bytes)")
+                return
+            except ValueError:
+                print("Invalid key hex in env vars — generating new keypair")
         else:
+            print("No valid keys in env vars — generating new keypair")
             signer = oqs.Signature(OQS_ALGORITHM)
             self.public_key = signer.generate_keypair()
             self.private_key = signer.export_secret_key()

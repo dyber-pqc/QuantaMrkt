@@ -34,6 +34,47 @@ jobs:
           pip install liboqs-python httpx
           cd lib && pip install -e .
 
+      - name: Generate or load ML-DSA-87 keypair
+        id: keygen
+        env:
+          PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
+          PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
+        run: |
+          python -c "
+          import os, oqs
+          pk_hex = os.environ.get('PLATFORM_ML_DSA_PUBLIC_KEY', '')
+          sk_hex = os.environ.get('PLATFORM_ML_DSA_PRIVATE_KEY', '')
+          if pk_hex and sk_hex and len(pk_hex) > 100 and len(sk_hex) > 100:
+              try:
+                  bytes.fromhex(pk_hex)
+                  bytes.fromhex(sk_hex)
+                  print('Keys loaded from secrets - ready to sign')
+              except ValueError:
+                  print('ERROR: Invalid key hex in secrets')
+          else:
+              print('No valid keys found. Generating new ML-DSA-87 keypair...')
+              signer = oqs.Signature('Dilithium5')
+              pk = signer.generate_keypair()
+              sk = signer.export_secret_key()
+              print()
+              print('=' * 80)
+              print('NEW ML-DSA-87 PLATFORM KEYPAIR GENERATED')
+              print('=' * 80)
+              print()
+              print('STEP 1: Go to https://github.com/dyber-pqc/QuantaMrkt/settings/secrets/actions')
+              print()
+              print('STEP 2: Update PLATFORM_ML_DSA_PUBLIC_KEY with this value:')
+              print(pk.hex())
+              print()
+              print('STEP 3: Update PLATFORM_ML_DSA_PRIVATE_KEY with this value:')
+              print(sk.hex())
+              print()
+              print(f'Public key: {len(pk)} bytes, Private key: {len(sk)} bytes')
+              print('=' * 80)
+              print()
+              print('After saving both secrets, re-run this workflow to sign all models.')
+          "
+
       - name: Sign all models
         env:
           QUANTAMRKT_API_URL: https://quantamrkt.com
