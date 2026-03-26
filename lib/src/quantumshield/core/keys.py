@@ -34,11 +34,14 @@ try:
     }
 except ImportError:
     _HAS_PQC = False
+    # Only warn once, and only when not running as CLI (avoids noise on every command)
     warnings.warn(
         "liboqs not installed — using stub crypto (random bytes). "
         "Install liboqs-python for real PQC:  pip install quantumshield[pqc]",
         stacklevel=1,
     )
+    # Suppress future duplicate warnings from this module
+    warnings.filterwarnings("ignore", message="liboqs not installed")
 
 # Approximate real key sizes used by stubs so downstream code behaves
 # consistently regardless of backend.
