@@ -1,0 +1,323 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { SITE } from '../lib/constants';
+import type { User } from '../lib/auth';
+
+const user = (Astro.locals as any).user as User | undefined;
+---
+
+<MarketingLayout title="Submit Model" description="Submit a HuggingFace model for quantum-safe protection on QuantaMrkt.">
+
+  <section class="relative overflow-hidden py-16 md:py-24">
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-electric/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-quantum/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="mx-auto max-w-2xl px-6 relative z-10">
+
+      {!user ? (
+        <!-- Not Logged In -->
+        <div class="text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-electric/10 mb-6">
+            <svg class="h-8 w-8 text-electric" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+          </div>
+          <h1 class="text-3xl font-bold tracking-tight mb-3">Submit a Model</h1>
+          <p class="text-gray-400 mb-8">Sign in with GitHub to submit models for quantum-safe protection.</p>
+          <a href="/api/auth/login" class="btn-primary text-base px-8 py-3.5 inline-flex items-center gap-2">
+            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            Sign In with GitHub
+          </a>
+        </div>
+      ) : (
+        <!-- Logged In - Submission Form -->
+        <div>
+          <div class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+              Submit a <span class="gradient-text">Model</span>
+            </h1>
+            <p class="text-gray-400">
+              Paste a HuggingFace model URL to register it with quantum-safe PQC signatures.
+            </p>
+          </div>
+
+          <!-- Success Banner (hidden by default) -->
+          <div id="success-banner" class="hidden rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-5 py-4 mb-6">
+            <div class="flex items-start gap-3">
+              <svg class="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div>
+                <p class="text-sm font-semibold text-emerald-400">Model submitted successfully!</p>
+                <p class="text-xs text-emerald-400/70 mt-1">Your model is now being verified with PQC signatures.</p>
+                <a id="success-link" href="/models" class="inline-flex items-center gap-1 text-xs text-electric hover:underline mt-2">
+                  View your model
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error Banner -->
+          <div id="error-banner" class="hidden rounded-xl border border-red-500/20 bg-red-500/[0.06] px-5 py-4 mb-6">
+            <div class="flex items-start gap-3">
+              <svg class="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <p id="error-text" class="text-sm text-red-400"></p>
+            </div>
+          </div>
+
+          <!-- Form -->
+          <form id="submit-form" class="rounded-2xl border border-white/5 bg-navy-800 overflow-hidden">
+            <div class="p-6">
+              <label for="hf-url" class="block text-sm font-medium text-gray-300 mb-2">HuggingFace Model URL</label>
+              <div class="flex flex-col sm:flex-row gap-3">
+                <input
+                  id="hf-url"
+                  type="url"
+                  placeholder="https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
+                  class="flex-1 rounded-xl border border-white/10 bg-navy-900 px-5 py-3 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:ring-2 focus:ring-electric/20 focus:outline-none transition-all"
+                  required
+                />
+                <button
+                  id="submit-btn"
+                  type="submit"
+                  class="rounded-xl bg-electric text-navy-900 font-semibold text-sm px-6 py-3 hover:bg-electric/90 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  Fetch &amp; Verify
+                </button>
+              </div>
+              <p class="text-[11px] text-gray-600 mt-2">We'll fetch the model metadata, create a version manifest, and sign it with PQC algorithms.</p>
+            </div>
+
+            <!-- Preview (hidden until fetch) -->
+            <div id="model-preview" class="hidden border-t border-white/5 p-6">
+              <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Model Preview</h3>
+              <div class="flex items-center gap-3 mb-4">
+                <div id="preview-avatar" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-sm font-bold text-gray-400"></div>
+                <div>
+                  <p id="preview-name" class="text-sm font-semibold text-white"></p>
+                  <p id="preview-author" class="text-[11px] text-gray-500"></p>
+                </div>
+              </div>
+              <p id="preview-description" class="text-xs text-gray-400 leading-relaxed mb-3 line-clamp-3"></p>
+              <div class="flex flex-wrap gap-2 mb-3" id="preview-tags"></div>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="rounded-lg bg-navy-900 border border-white/5 p-2.5 text-center">
+                  <p id="preview-downloads" class="text-sm font-mono font-bold text-white">-</p>
+                  <p class="text-[10px] text-gray-600">Downloads</p>
+                </div>
+                <div class="rounded-lg bg-navy-900 border border-white/5 p-2.5 text-center">
+                  <p id="preview-files" class="text-sm font-mono font-bold text-white">-</p>
+                  <p class="text-[10px] text-gray-600">Files</p>
+                </div>
+                <div class="rounded-lg bg-navy-900 border border-white/5 p-2.5 text-center">
+                  <p id="preview-size" class="text-sm font-mono font-bold text-white">-</p>
+                  <p class="text-[10px] text-gray-600">Size</p>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <!-- Submitting Progress (hidden by default) -->
+          <div id="submit-progress" class="hidden mt-6 rounded-2xl border border-white/5 bg-navy-800 p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-electric/10">
+                <svg class="h-4 w-4 text-electric animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <div>
+                <p id="progress-text" class="text-sm text-white font-medium">Submitting model...</p>
+                <p id="progress-detail" class="text-[11px] text-gray-500">Fetching metadata from HuggingFace</p>
+              </div>
+            </div>
+            <div class="space-y-2" id="progress-steps">
+              <div class="flex items-center gap-2 text-xs text-gray-500" data-step="fetch">
+                <div class="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center"></div>
+                Fetching model metadata
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-500" data-step="create">
+                <div class="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center"></div>
+                Creating model entry
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-500" data-step="sign">
+                <div class="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center"></div>
+                Generating PQC signatures
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-500" data-step="log">
+                <div class="w-4 h-4 rounded-full border border-white/10 flex items-center justify-center"></div>
+                Logging to transparency chain
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  </section>
+
+<script>
+  function extractRepoId(url) {
+    try {
+      const u = new URL(url);
+      if (!u.hostname.includes('huggingface.co')) return null;
+      const parts = u.pathname.split('/').filter(Boolean);
+      if (parts.length < 2) return null;
+      return parts[0] + '/' + parts[1];
+    } catch {
+      return null;
+    }
+  }
+
+  function formatNumber(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
+    return String(n);
+  }
+
+  function formatSize(bytes) {
+    if (bytes >= 1_000_000_000) return (bytes / 1_000_000_000).toFixed(1) + ' GB';
+    if (bytes >= 1_000_000) return (bytes / 1_000_000).toFixed(0) + ' MB';
+    if (bytes >= 1_000) return (bytes / 1_000).toFixed(0) + ' KB';
+    return bytes + ' B';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('submit-form');
+    const input = document.getElementById('hf-url');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorBanner = document.getElementById('error-banner');
+    const errorText = document.getElementById('error-text');
+    const successBanner = document.getElementById('success-banner');
+    const successLink = document.getElementById('success-link');
+    const preview = document.getElementById('model-preview');
+    const progress = document.getElementById('submit-progress');
+
+    if (!form) return;
+
+    // Check for pre-filled URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const prefilledUrl = urlParams.get('url');
+    if (prefilledUrl && input) {
+      input.value = prefilledUrl;
+    }
+
+    function updateStep(step, state) {
+      const el = document.querySelector(`[data-step="${step}"]`);
+      if (!el) return;
+      const dot = el.querySelector('div');
+      if (state === 'active') {
+        el.className = 'flex items-center gap-2 text-xs text-electric';
+        if (dot) dot.innerHTML = '<svg class="h-3 w-3 text-electric animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+      } else if (state === 'done') {
+        el.className = 'flex items-center gap-2 text-xs text-emerald-400';
+        if (dot) dot.innerHTML = '<svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = input?.value?.trim();
+      if (!url) return;
+
+      errorBanner?.classList.add('hidden');
+      successBanner?.classList.add('hidden');
+      preview?.classList.add('hidden');
+
+      const repoId = extractRepoId(url);
+      if (!repoId) {
+        if (errorText) errorText.textContent = 'Please enter a valid HuggingFace model URL.';
+        errorBanner?.classList.remove('hidden');
+        return;
+      }
+
+      // Show progress
+      progress?.classList.remove('hidden');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Submitting...';
+      }
+
+      updateStep('fetch', 'active');
+
+      try {
+        // Preview: fetch model info client-side first
+        const hfRes = await fetch(`https://huggingface.co/api/models/${repoId}`);
+        if (hfRes.ok) {
+          const hfData = await hfRes.json();
+          // Show preview
+          const previewAvatar = document.getElementById('preview-avatar');
+          const previewName = document.getElementById('preview-name');
+          const previewAuthor = document.getElementById('preview-author');
+          const previewDesc = document.getElementById('preview-description');
+          const previewTags = document.getElementById('preview-tags');
+          const previewDl = document.getElementById('preview-downloads');
+          const previewFiles = document.getElementById('preview-files');
+          const previewSize = document.getElementById('preview-size');
+
+          const author = (hfData.modelId || '').split('/')[0] || '?';
+          if (previewAvatar) previewAvatar.textContent = author[0].toUpperCase();
+          if (previewName) previewName.textContent = hfData.modelId || repoId;
+          if (previewAuthor) previewAuthor.textContent = author;
+          if (previewDesc) previewDesc.textContent = hfData.description || hfData.cardData?.description || 'No description available.';
+          if (previewDl) previewDl.textContent = formatNumber(hfData.downloads || 0);
+          if (previewFiles) previewFiles.textContent = String(hfData.siblings?.length || 0);
+          if (previewSize) {
+            let totalBytes = 0;
+            if (hfData.siblings) {
+              for (const f of hfData.siblings) totalBytes += f.size || 0;
+            }
+            previewSize.textContent = totalBytes > 0 ? formatSize(totalBytes) : '--';
+          }
+          if (previewTags) {
+            const tags = (hfData.tags || []).slice(0, 6);
+            previewTags.innerHTML = tags.map(t =>
+              `<span class="inline-flex rounded bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] text-gray-400">${t}</span>`
+            ).join('');
+          }
+          preview?.classList.remove('hidden');
+        }
+
+        updateStep('fetch', 'done');
+        updateStep('create', 'active');
+
+        // Submit to API
+        const res = await fetch('/api/models/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hf_url: url }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Submission failed');
+        }
+
+        updateStep('create', 'done');
+        updateStep('sign', 'done');
+        updateStep('log', 'done');
+
+        // Show success
+        progress?.classList.add('hidden');
+        successBanner?.classList.remove('hidden');
+        if (successLink) successLink.href = `/models/${data.slug}`;
+
+        // Redirect after a short delay
+        setTimeout(() => {
+          window.location.href = `/models/${data.slug}`;
+        }, 2000);
+
+      } catch (err) {
+        progress?.classList.add('hidden');
+        if (errorText) errorText.textContent = err.message || 'Failed to submit model. Please try again.';
+        errorBanner?.classList.remove('hidden');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg> Fetch &amp; Verify';
+        }
+      }
+    });
+  });
+</script>
+
+</MarketingLayout>

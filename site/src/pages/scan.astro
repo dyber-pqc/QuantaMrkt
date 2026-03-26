@@ -1,0 +1,690 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { SITE } from '../lib/constants';
+---
+
+<MarketingLayout title="HNDL Risk Scanner" description="Paste a HuggingFace model URL and get an instant quantum risk assessment. Free, no login required.">
+
+  <!-- Hero -->
+  <section class="relative overflow-hidden py-16 md:py-24">
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-electric/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute top-1/3 right-1/4 w-[300px] h-[300px] bg-quantum/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="mx-auto max-w-4xl px-6 text-center relative z-10">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-electric/20 bg-electric/5 text-sm text-electric">
+        <span class="inline-block w-2 h-2 rounded-full bg-electric animate-pulse"></span>
+        Free Tool &middot; No Login Required
+      </div>
+
+      <h1 class="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-4">
+        <span class="gradient-text">HNDL</span> Risk Scanner
+      </h1>
+      <p class="mx-auto max-w-2xl text-lg text-gray-400 leading-relaxed mb-10">
+        Paste a HuggingFace model URL to get an instant quantum risk assessment. Free, no login required.
+      </p>
+
+      <!-- Scanner Form -->
+      <div class="mx-auto max-w-2xl">
+        <form id="scan-form" class="flex flex-col sm:flex-row gap-3">
+          <input
+            id="hf-url-input"
+            type="url"
+            placeholder="https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
+            class="flex-1 rounded-xl border border-white/10 bg-navy-800 px-5 py-3.5 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:ring-2 focus:ring-electric/20 focus:outline-none transition-all"
+            required
+          />
+          <button
+            id="scan-btn"
+            type="submit"
+            class="rounded-xl bg-electric text-navy-900 font-semibold text-sm px-8 py-3.5 hover:bg-electric/90 transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            Scan
+          </button>
+        </form>
+        <p id="scan-error" class="hidden mt-3 text-sm text-red-400"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Loading Spinner -->
+  <div id="scan-loading" class="hidden mx-auto max-w-4xl px-6 pb-8">
+    <div class="rounded-2xl border border-white/5 bg-navy-800 p-12 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-electric/10 mb-4">
+        <svg class="h-8 w-8 text-electric animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <p class="text-sm text-gray-400">Fetching model data from HuggingFace...</p>
+    </div>
+  </div>
+
+  <!-- Risk Report Card (hidden until scan completes) -->
+  <div id="report-card" class="hidden mx-auto max-w-4xl px-6 pb-16">
+    <div class="rounded-2xl border border-white/5 bg-navy-800 overflow-hidden">
+      <!-- Model Header -->
+      <div class="px-6 py-5 border-b border-white/5 flex items-center gap-4">
+        <div id="report-avatar" class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 text-lg font-bold text-gray-400"></div>
+        <div class="flex-1 min-w-0">
+          <h2 id="report-model-name" class="text-lg font-semibold text-white truncate"></h2>
+          <p id="report-author" class="text-sm text-gray-500"></p>
+        </div>
+        <div id="report-pipeline-badge" class="hidden rounded-lg bg-electric/10 border border-electric/20 px-3 py-1 text-xs font-medium text-electric"></div>
+      </div>
+
+      <!-- Score + Breakdown -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-0 md:divide-x divide-white/5">
+        <!-- Risk Score Gauge -->
+        <div class="p-6 flex flex-col items-center justify-center border-b md:border-b-0 border-white/5">
+          <div class="relative w-32 h-32 mb-3">
+            <svg class="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="8" class="text-white/5" />
+              <circle id="score-ring" cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="8"
+                stroke-dasharray="326.73" stroke-dashoffset="326.73" stroke-linecap="round" class="text-electric transition-all duration-1000" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="report-score" class="text-3xl font-bold text-white">0</span>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider">Risk Score</span>
+            </div>
+          </div>
+          <span id="report-risk-badge" class="inline-flex rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wider"></span>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="p-6 border-b md:border-b-0 border-white/5">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Key Metrics</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-400">Estimated Size</span>
+              <span id="report-size" class="text-xs font-mono text-white"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-400">Downloads</span>
+              <span id="report-downloads" class="text-xs font-mono text-white"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-400">License</span>
+              <span id="report-license" class="text-xs font-mono text-white"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-400">Shelf Life</span>
+              <span id="report-shelf-life" class="text-xs font-mono text-electric"></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-400">Model Age</span>
+              <span id="report-age" class="text-xs font-mono text-white"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Risk Breakdown -->
+        <div class="p-6">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Risk Breakdown</h3>
+          <div id="report-breakdown" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- Quantum Exposure Timeline -->
+      <div class="px-6 py-5 border-t border-white/5">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Time Until Quantum Exposure</h3>
+        <div class="relative h-3 rounded-full bg-white/5 overflow-hidden">
+          <div id="timeline-bar" class="absolute inset-y-0 left-0 rounded-full transition-all duration-1000" style="width: 0%"></div>
+        </div>
+        <div class="flex items-center justify-between mt-2">
+          <span class="text-[10px] text-gray-600">Now</span>
+          <span id="timeline-label" class="text-[10px] text-gray-400"></span>
+          <span class="text-[10px] text-gray-600">2035+</span>
+        </div>
+      </div>
+
+      <!-- Recommendation -->
+      <div class="px-6 py-5 border-t border-white/5">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Recommendation</h3>
+        <p id="report-recommendation" class="text-sm text-gray-300 leading-relaxed"></p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="px-6 py-5 border-t border-white/5 flex flex-wrap items-center gap-3">
+        <button id="share-report-btn" class="rounded-lg border border-white/10 bg-white/5 text-xs text-gray-400 px-4 py-2.5 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+          Share Report
+        </button>
+        <a id="protect-model-btn" href="/submit" class="rounded-lg bg-electric text-navy-900 font-semibold text-xs px-4 py-2.5 hover:bg-electric/90 transition-colors flex items-center gap-2">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+          Protect on QuantaMrkt
+        </a>
+        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] text-xs text-gray-600 px-4 py-2.5 cursor-not-allowed flex items-center gap-2">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          Download PDF (Coming Soon)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recently Scanned -->
+  <section id="recent-section" class="hidden mx-auto max-w-4xl px-6 pb-12">
+    <h2 class="text-sm font-semibold text-white mb-4">Recently Scanned</h2>
+    <div id="recent-list" class="space-y-2"></div>
+  </section>
+
+  <!-- How HNDL Risk Works -->
+  <section class="mx-auto max-w-4xl px-6 pb-16">
+    <div class="rounded-2xl border border-white/5 bg-navy-800 p-8">
+      <h2 class="text-xl font-bold text-white mb-6">How HNDL Risk Works</h2>
+      <p class="text-sm text-gray-400 leading-relaxed mb-6">
+        Harvest Now, Decrypt Later (HNDL) is a strategy where adversaries collect encrypted data today, anticipating future quantum computers
+        will break current encryption. AI models are high-value targets because they represent billions in training investment, proprietary
+        architectures, and sensitive training data.
+      </p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="text-left py-2 pr-4 text-gray-500 font-medium">Risk Level</th>
+              <th class="text-left py-2 pr-4 text-gray-500 font-medium">Score</th>
+              <th class="text-left py-2 pr-4 text-gray-500 font-medium">Description</th>
+              <th class="text-left py-2 text-gray-500 font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody class="text-gray-400">
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4"><span class="inline-flex rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-red-400 font-medium">CRITICAL</span></td>
+              <td class="py-2 pr-4 font-mono">80-100</td>
+              <td class="py-2 pr-4">Large, high-value model with proprietary data. Immediate quantum threat.</td>
+              <td class="py-2">Migrate to PQC immediately</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4"><span class="inline-flex rounded bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-orange-400 font-medium">HIGH</span></td>
+              <td class="py-2 pr-4 font-mono">60-79</td>
+              <td class="py-2 pr-4">Significant model with broad adoption. Elevated risk profile.</td>
+              <td class="py-2">Plan PQC migration within 6 months</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4"><span class="inline-flex rounded bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 text-yellow-400 font-medium">MEDIUM</span></td>
+              <td class="py-2 pr-4 font-mono">40-59</td>
+              <td class="py-2 pr-4">Moderate-sized model with standard risk factors.</td>
+              <td class="py-2">Monitor and prepare migration plan</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4"><span class="inline-flex rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-emerald-400 font-medium">LOW</span></td>
+              <td class="py-2 pr-4 font-mono">0-39</td>
+              <td class="py-2 pr-4">Smaller model or lower target value. Standard precautions apply.</td>
+              <td class="py-2">Follow PQC best practices</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="mx-auto max-w-4xl px-6 pb-24">
+    <h2 class="text-xl font-bold text-white mb-6">Frequently Asked Questions</h2>
+    <div class="space-y-4">
+      <details class="group rounded-xl border border-white/5 bg-navy-800">
+        <summary class="flex items-center justify-between px-6 py-4 text-sm font-medium text-white cursor-pointer">
+          What is Harvest Now Decrypt Later?
+          <svg class="h-4 w-4 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="px-6 pb-4 text-sm text-gray-400 leading-relaxed">
+          HNDL is a strategy where adversaries intercept and store encrypted data today, with the intention of decrypting it once sufficiently powerful quantum computers become available.
+          For AI models, this means that model weights, training data, and proprietary architectures transmitted or stored with classical encryption could be compromised in the future.
+          The risk is proportional to how valuable the model will remain when quantum decryption becomes feasible.
+        </div>
+      </details>
+      <details class="group rounded-xl border border-white/5 bg-navy-800">
+        <summary class="flex items-center justify-between px-6 py-4 text-sm font-medium text-white cursor-pointer">
+          When will quantum computers break current encryption?
+          <svg class="h-4 w-4 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="px-6 pb-4 text-sm text-gray-400 leading-relaxed">
+          Leading estimates from NIST and major research institutions suggest that cryptographically relevant quantum computers (CRQC) could appear between 2029 and 2035.
+          However, the timeline is uncertain. Some experts believe it could be sooner. The important point is that data intercepted today will be vulnerable whenever
+          that threshold is crossed, making proactive protection essential for high-value assets like AI models.
+        </div>
+      </details>
+      <details class="group rounded-xl border border-white/5 bg-navy-800">
+        <summary class="flex items-center justify-between px-6 py-4 text-sm font-medium text-white cursor-pointer">
+          How do I protect my models?
+          <svg class="h-4 w-4 text-gray-500 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+        <div class="px-6 pb-4 text-sm text-gray-400 leading-relaxed">
+          <strong class="text-white">1. Register on QuantaMrkt:</strong> Submit your model to get PQC-native signatures using ML-KEM and ML-DSA (FIPS 203/204 compliant).<br/>
+          <strong class="text-white">2. Verify integrity:</strong> Use our Shield Registry to verify that your model files have not been tampered with.<br/>
+          <strong class="text-white">3. Migrate encryption:</strong> Use the QuantaMrkt Migrator to transition your model storage and distribution to post-quantum cryptography.<br/>
+          <strong class="text-white">4. Monitor:</strong> Set up continuous monitoring to detect unauthorized access or distribution of your model.
+        </div>
+      </details>
+    </div>
+  </section>
+
+<script>
+  // ---- HNDL Risk Scoring Algorithm ----
+
+  function estimateModelSize(model) {
+    // Try safetensors field first
+    if (model.safetensors) {
+      const params = model.safetensors.total;
+      if (params) {
+        // Rough estimate: 2 bytes per param for fp16
+        return (params * 2) / (1024 * 1024 * 1024);
+      }
+      // Sum parameter sizes from safetensors
+      const paramsMap = model.safetensors.parameters;
+      if (paramsMap) {
+        let total = 0;
+        for (const key of Object.keys(paramsMap)) {
+          total += paramsMap[key];
+        }
+        return (total * 2) / (1024 * 1024 * 1024);
+      }
+    }
+
+    // Try siblings (file list)
+    if (model.siblings && model.siblings.length > 0) {
+      let totalBytes = 0;
+      for (const file of model.siblings) {
+        if (file.size) totalBytes += file.size;
+      }
+      if (totalBytes > 0) return totalBytes / (1024 * 1024 * 1024);
+    }
+
+    // Fallback: check model name for parameter hints
+    const name = (model.modelId || model.id || '').toLowerCase();
+    if (name.includes('70b') || name.includes('65b')) return 130;
+    if (name.includes('30b') || name.includes('34b') || name.includes('33b')) return 60;
+    if (name.includes('13b') || name.includes('14b')) return 26;
+    if (name.includes('7b') || name.includes('8b')) return 15;
+    if (name.includes('3b')) return 6;
+    if (name.includes('1b') || name.includes('1.5b')) return 3;
+    return 1; // default small
+  }
+
+  function calculateHNDL(model) {
+    let score = 40; // base
+    const breakdown = [];
+
+    // Size factor
+    const sizeGB = estimateModelSize(model);
+    if (sizeGB > 100) {
+      score += 30;
+      breakdown.push({ label: 'Model Size', value: `${sizeGB.toFixed(1)} GB`, impact: '+30', level: 'critical' });
+    } else if (sizeGB > 10) {
+      score += 20;
+      breakdown.push({ label: 'Model Size', value: `${sizeGB.toFixed(1)} GB`, impact: '+20', level: 'high' });
+    } else if (sizeGB > 1) {
+      score += 10;
+      breakdown.push({ label: 'Model Size', value: `${sizeGB.toFixed(1)} GB`, impact: '+10', level: 'medium' });
+    } else {
+      breakdown.push({ label: 'Model Size', value: `${sizeGB.toFixed(2)} GB`, impact: '+0', level: 'low' });
+    }
+
+    // Downloads
+    const downloads = model.downloads || 0;
+    if (downloads > 1000000) {
+      score += 15;
+      breakdown.push({ label: 'Downloads', value: formatNumber(downloads), impact: '+15', level: 'critical' });
+    } else if (downloads > 100000) {
+      score += 10;
+      breakdown.push({ label: 'Downloads', value: formatNumber(downloads), impact: '+10', level: 'high' });
+    } else if (downloads > 10000) {
+      score += 5;
+      breakdown.push({ label: 'Downloads', value: formatNumber(downloads), impact: '+5', level: 'medium' });
+    } else {
+      breakdown.push({ label: 'Downloads', value: formatNumber(downloads), impact: '+0', level: 'low' });
+    }
+
+    // Task type
+    const pipelineTag = model.pipeline_tag || '';
+    if (['text-generation', 'image-generation', 'text-to-image', 'image-text-to-text'].includes(pipelineTag)) {
+      score += 10;
+      breakdown.push({ label: 'Task Type', value: pipelineTag, impact: '+10', level: 'high' });
+    } else if (pipelineTag) {
+      breakdown.push({ label: 'Task Type', value: pipelineTag, impact: '+0', level: 'low' });
+    }
+
+    // License
+    const license = (model.cardData?.license || model.license || '').toLowerCase();
+    if (!license || license.includes('proprietary') || license.includes('non-commercial') || license.includes('cc-by-nc')) {
+      score += 5;
+      breakdown.push({ label: 'License', value: license || 'Unknown', impact: '+5', level: 'medium' });
+    } else {
+      breakdown.push({ label: 'License', value: license, impact: '+0', level: 'low' });
+    }
+
+    // Age factor
+    const createdAt = model.createdAt || model.created_at;
+    if (createdAt) {
+      const ageMs = Date.now() - new Date(createdAt).getTime();
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      if (ageDays < 90) {
+        breakdown.push({ label: 'Model Age', value: `${Math.floor(ageDays)} days`, impact: '+0', level: 'low' });
+      } else if (ageDays < 365) {
+        breakdown.push({ label: 'Model Age', value: `${Math.floor(ageDays / 30)} months`, impact: '+0', level: 'low' });
+      } else {
+        breakdown.push({ label: 'Model Age', value: `${(ageDays / 365).toFixed(1)} years`, impact: '+0', level: 'low' });
+      }
+    }
+
+    const finalScore = Math.min(100, score);
+    let riskLevel;
+    if (finalScore >= 80) riskLevel = 'CRITICAL';
+    else if (finalScore >= 60) riskLevel = 'HIGH';
+    else if (finalScore >= 40) riskLevel = 'MEDIUM';
+    else riskLevel = 'LOW';
+
+    // Shelf life estimate
+    let shelfLifeYears;
+    if (finalScore >= 80) shelfLifeYears = 15;
+    else if (finalScore >= 60) shelfLifeYears = 10;
+    else if (finalScore >= 40) shelfLifeYears = 7;
+    else shelfLifeYears = 5;
+
+    // Recommendation
+    let recommendation;
+    if (riskLevel === 'CRITICAL') {
+      recommendation = 'This model represents a high-value quantum target. Its large size, broad adoption, and generative capabilities make it an ideal candidate for HNDL attacks. Immediate migration to post-quantum cryptography (PQC) is strongly recommended. Register on QuantaMrkt for PQC-native signing and verification.';
+    } else if (riskLevel === 'HIGH') {
+      recommendation = 'This model has elevated quantum risk due to its popularity and capabilities. Plan migration to PQC within the next 6 months. Consider registering on QuantaMrkt for quantum-safe integrity verification.';
+    } else if (riskLevel === 'MEDIUM') {
+      recommendation = 'This model faces moderate quantum risk. Monitor quantum computing developments and prepare a migration plan. Consider proactive registration on QuantaMrkt for future-proof protection.';
+    } else {
+      recommendation = 'This model has lower quantum risk, but proactive protection is still advisable. Follow PQC best practices and consider registering for quantum-safe verification as part of your security hygiene.';
+    }
+
+    return { score: finalScore, riskLevel, shelfLifeYears, breakdown, recommendation, sizeGB };
+  }
+
+  function formatNumber(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
+    return String(n);
+  }
+
+  function formatSize(gb) {
+    if (gb >= 1) return gb.toFixed(1) + ' GB';
+    const mb = gb * 1024;
+    if (mb >= 1) return mb.toFixed(0) + ' MB';
+    return (mb * 1024).toFixed(0) + ' KB';
+  }
+
+  function riskColor(level) {
+    switch (level) {
+      case 'CRITICAL': return { text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', bar: 'bg-gradient-to-r from-red-500 to-red-400', ring: 'text-red-500' };
+      case 'HIGH': return { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', bar: 'bg-gradient-to-r from-orange-500 to-orange-400', ring: 'text-orange-500' };
+      case 'MEDIUM': return { text: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', bar: 'bg-gradient-to-r from-yellow-500 to-yellow-400', ring: 'text-yellow-500' };
+      default: return { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', bar: 'bg-gradient-to-r from-emerald-500 to-emerald-400', ring: 'text-emerald-500' };
+    }
+  }
+
+  function breakdownColor(level) {
+    switch (level) {
+      case 'critical': return 'text-red-400';
+      case 'high': return 'text-orange-400';
+      case 'medium': return 'text-yellow-400';
+      default: return 'text-emerald-400';
+    }
+  }
+
+  function extractRepoId(url) {
+    try {
+      const u = new URL(url);
+      if (!u.hostname.includes('huggingface.co')) return null;
+      const parts = u.pathname.split('/').filter(Boolean);
+      if (parts.length < 2) return null;
+      return parts[0] + '/' + parts[1];
+    } catch {
+      return null;
+    }
+  }
+
+  // ---- Recently Scanned (localStorage) ----
+
+  function getRecentScans() {
+    try {
+      return JSON.parse(localStorage.getItem('qm_recent_scans') || '[]');
+    } catch { return []; }
+  }
+
+  function saveRecentScan(entry) {
+    const scans = getRecentScans();
+    // Avoid duplicates
+    const filtered = scans.filter(s => s.repoId !== entry.repoId);
+    filtered.unshift(entry);
+    localStorage.setItem('qm_recent_scans', JSON.stringify(filtered.slice(0, 5)));
+  }
+
+  function renderRecentScans() {
+    const scans = getRecentScans();
+    const section = document.getElementById('recent-section');
+    const list = document.getElementById('recent-list');
+    if (!section || !list) return;
+    if (scans.length === 0) {
+      section.classList.add('hidden');
+      return;
+    }
+    section.classList.remove('hidden');
+    list.innerHTML = scans.map(s => {
+      const colors = riskColor(s.riskLevel);
+      return `<a href="/scan?url=https://huggingface.co/${encodeURIComponent(s.repoId)}" class="flex items-center justify-between rounded-xl border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 transition-colors group">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-xs font-bold text-gray-400">${(s.author || '?')[0].toUpperCase()}</div>
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-gray-200 group-hover:text-white truncate">${s.name || s.repoId}</p>
+            <p class="text-[10px] text-gray-500">${s.author || ''}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs text-gray-400">${s.score}</span>
+          <span class="inline-flex rounded ${colors.bg} ${colors.border} border px-2 py-0.5 text-[10px] font-medium ${colors.text}">${s.riskLevel}</span>
+        </div>
+      </a>`;
+    }).join('');
+  }
+
+  // ---- Render Report ----
+
+  function renderReport(model, hndl) {
+    const card = document.getElementById('report-card');
+    if (!card) return;
+    card.classList.remove('hidden');
+
+    const colors = riskColor(hndl.riskLevel);
+
+    // Header
+    const avatar = document.getElementById('report-avatar');
+    const authorName = model.author || (model.modelId || '').split('/')[0] || '?';
+    if (avatar) avatar.textContent = authorName[0].toUpperCase();
+    const nameEl = document.getElementById('report-model-name');
+    if (nameEl) nameEl.textContent = model.modelId || model.id || 'Unknown';
+    const authorEl = document.getElementById('report-author');
+    if (authorEl) authorEl.textContent = authorName;
+
+    const pipelineBadge = document.getElementById('report-pipeline-badge');
+    if (pipelineBadge && model.pipeline_tag) {
+      pipelineBadge.textContent = model.pipeline_tag;
+      pipelineBadge.classList.remove('hidden');
+    }
+
+    // Score gauge
+    const scoreEl = document.getElementById('report-score');
+    if (scoreEl) scoreEl.textContent = String(hndl.score);
+    const ring = document.getElementById('score-ring');
+    if (ring) {
+      const circumference = 326.73;
+      const offset = circumference - (hndl.score / 100) * circumference;
+      ring.style.strokeDashoffset = String(offset);
+      ring.className = `${colors.ring} transition-all duration-1000`;
+    }
+
+    // Risk badge
+    const badge = document.getElementById('report-risk-badge');
+    if (badge) {
+      badge.textContent = hndl.riskLevel;
+      badge.className = `inline-flex rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wider ${colors.bg} ${colors.border} border ${colors.text}`;
+    }
+
+    // Key metrics
+    const sizeEl = document.getElementById('report-size');
+    if (sizeEl) sizeEl.textContent = formatSize(hndl.sizeGB);
+    const dlEl = document.getElementById('report-downloads');
+    if (dlEl) dlEl.textContent = formatNumber(model.downloads || 0);
+    const licEl = document.getElementById('report-license');
+    if (licEl) licEl.textContent = model.cardData?.license || model.license || 'Unknown';
+    const shelfEl = document.getElementById('report-shelf-life');
+    if (shelfEl) shelfEl.textContent = `~${hndl.shelfLifeYears} years`;
+    const ageEl = document.getElementById('report-age');
+    if (ageEl) {
+      const created = model.createdAt || model.created_at;
+      if (created) {
+        const days = Math.floor((Date.now() - new Date(created).getTime()) / 86400000);
+        if (days < 30) ageEl.textContent = `${days} days`;
+        else if (days < 365) ageEl.textContent = `${Math.floor(days / 30)} months`;
+        else ageEl.textContent = `${(days / 365).toFixed(1)} years`;
+      } else {
+        ageEl.textContent = 'Unknown';
+      }
+    }
+
+    // Breakdown
+    const breakdownEl = document.getElementById('report-breakdown');
+    if (breakdownEl) {
+      breakdownEl.innerHTML = hndl.breakdown.map(b => `
+        <div class="flex items-center justify-between">
+          <div class="min-w-0">
+            <span class="text-xs text-gray-400">${b.label}</span>
+            <span class="text-[10px] text-gray-600 ml-1">${b.value}</span>
+          </div>
+          <span class="text-xs font-mono ${breakdownColor(b.level)}">${b.impact}</span>
+        </div>
+      `).join('');
+    }
+
+    // Timeline bar
+    const timelineBar = document.getElementById('timeline-bar');
+    const timelineLabel = document.getElementById('timeline-label');
+    if (timelineBar && timelineLabel) {
+      const exposure = Math.min(100, (hndl.shelfLifeYears / 15) * 100);
+      timelineBar.style.width = exposure + '%';
+      timelineBar.className = `absolute inset-y-0 left-0 rounded-full transition-all duration-1000 ${colors.bar}`;
+      timelineLabel.textContent = `~${hndl.shelfLifeYears} years remaining`;
+    }
+
+    // Recommendation
+    const recEl = document.getElementById('report-recommendation');
+    if (recEl) recEl.textContent = hndl.recommendation;
+
+    // Update protect link with pre-filled URL
+    const protectBtn = document.getElementById('protect-model-btn');
+    if (protectBtn) {
+      protectBtn.href = `/submit?url=https://huggingface.co/${model.modelId || model.id}`;
+    }
+  }
+
+  // ---- Main ----
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderRecentScans();
+
+    const form = document.getElementById('scan-form');
+    const input = document.getElementById('hf-url-input');
+    const scanBtn = document.getElementById('scan-btn');
+    const errorEl = document.getElementById('scan-error');
+    const loadingEl = document.getElementById('scan-loading');
+    const reportCard = document.getElementById('report-card');
+
+    // Check for URL param (shared report)
+    const urlParams = new URLSearchParams(window.location.search);
+    const prefilledUrl = urlParams.get('url');
+    if (prefilledUrl && input) {
+      input.value = prefilledUrl;
+      // Auto-scan if URL is provided
+      setTimeout(() => form?.dispatchEvent(new Event('submit')), 100);
+    }
+
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = input?.value?.trim();
+      if (!url) return;
+
+      errorEl?.classList.add('hidden');
+      reportCard?.classList.add('hidden');
+
+      const repoId = extractRepoId(url);
+      if (!repoId) {
+        if (errorEl) {
+          errorEl.textContent = 'Please enter a valid HuggingFace model URL (e.g., https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)';
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      // Show loading
+      if (loadingEl) loadingEl.classList.remove('hidden');
+      if (scanBtn) {
+        scanBtn.disabled = true;
+        scanBtn.innerHTML = '<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Scanning...';
+      }
+
+      try {
+        const res = await fetch(`https://huggingface.co/api/models/${repoId}`);
+        if (!res.ok) throw new Error(`HuggingFace API returned ${res.status}. Model not found or API unavailable.`);
+        const model = await res.json();
+
+        const hndl = calculateHNDL(model);
+        renderReport(model, hndl);
+
+        // Save to recent
+        saveRecentScan({
+          repoId,
+          name: (model.modelId || model.id || repoId).split('/').pop(),
+          author: (model.modelId || model.id || repoId).split('/')[0],
+          score: hndl.score,
+          riskLevel: hndl.riskLevel,
+          scannedAt: new Date().toISOString(),
+        });
+        renderRecentScans();
+
+        // Update URL for sharing
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('url', url);
+        window.history.replaceState({}, '', newUrl.toString());
+
+      } catch (err) {
+        if (errorEl) {
+          errorEl.textContent = err.message || 'Failed to fetch model data. Please check the URL and try again.';
+          errorEl.classList.remove('hidden');
+        }
+      } finally {
+        if (loadingEl) loadingEl.classList.add('hidden');
+        if (scanBtn) {
+          scanBtn.disabled = false;
+          scanBtn.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> Scan';
+        }
+      }
+    });
+
+    // Share report button
+    const shareBtn = document.getElementById('share-report-btn');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          shareBtn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Copied!';
+          setTimeout(() => {
+            shareBtn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg> Share Report';
+          }, 2000);
+        } catch {
+          // Fallback
+          prompt('Copy this URL to share:', window.location.href);
+        }
+      });
+    }
+  });
+</script>
+
+</MarketingLayout>

@@ -866,11 +866,63 @@ quantumshield verify {model.author}/{model.name}</pre>
         const data = await res.json();
         verifyResult.classList.remove('hidden');
         if (data.verified) {
+          const fi = data.file_integrity || {};
+          const sigCount = (data.signatures || []).length;
+          const algo = data.signatures?.[0]?.algorithm || 'PQC';
+          const sourceLabel = fi.source_checked ? `Source: ${fi.source}` : 'Local verification only';
+
+          let integrityHtml = '';
+          if (fi.total_files > 0) {
+            const allMatched = fi.mismatched === 0 && fi.missing === 0;
+            const barColor = allMatched ? 'bg-emerald-500' : 'bg-yellow-500';
+            const matchPct = fi.total_files > 0 ? Math.round((fi.matched / fi.total_files) * 100) : 0;
+            integrityHtml = `
+              <div class="mt-3 pt-3 border-t border-emerald-500/10">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] text-emerald-400/80 font-medium">File Integrity</span>
+                  <span class="text-[10px] text-emerald-400/60">${sourceLabel}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div class="${barColor} h-full rounded-full transition-all" style="width: ${matchPct}%"></div>
+                  </div>
+                  <span class="text-[11px] font-mono text-emerald-400">${fi.matched}/${fi.total_files}</span>
+                </div>
+                <div class="flex gap-4 mt-2 text-[10px]">
+                  <span class="text-emerald-400/70">${fi.matched} matched</span>
+                  ${fi.mismatched > 0 ? `<span class="text-yellow-400">${fi.mismatched} mismatched</span>` : ''}
+                  ${fi.missing > 0 ? `<span class="text-red-400">${fi.missing} missing</span>` : ''}
+                </div>
+              </div>
+            `;
+          }
+
           verifyResult.className = 'rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-5 py-4 mb-5 text-sm text-emerald-400';
-          verifyResult.innerHTML = '<strong>Signature verified.</strong> All file hashes match the signed manifest.';
+          verifyResult.innerHTML = `
+            <div class="flex items-start gap-3">
+              <svg class="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <div class="flex-1">
+                <strong>Signature verified.</strong> ${sigCount} ${algo} signature(s) valid.
+                ${integrityHtml}
+                <p class="text-[10px] text-emerald-400/50 mt-2">Checked at ${new Date(data.checked_at).toLocaleString()}</p>
+              </div>
+            </div>
+          `;
         } else {
           verifyResult.className = 'rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] px-5 py-4 mb-5 text-sm text-yellow-400';
-          verifyResult.textContent = data.error || 'Signature verification failed.';
+          verifyResult.innerHTML = `
+            <div class="flex items-start gap-3">
+              <svg class="h-5 w-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <strong>No signatures found.</strong> This model has not been signed yet.
+                <p class="text-[10px] text-yellow-400/70 mt-1">Submit this model to generate PQC signatures.</p>
+              </div>
+            </div>
+          `;
         }
       } catch {
         verifyResult.classList.remove('hidden');
