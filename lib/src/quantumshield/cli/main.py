@@ -202,13 +202,28 @@ def pull_cmd(name: str) -> None:
             console.print(f"[red]Pull failed: {exc}[/red]")
             sys.exit(1)
 
-    # Display model info
-    model = data.get("model", data.get("metadata", {}))
+    # Display model info — handle both nested and flat API responses
+    model_name = data.get("name", name)
+    author = data.get("author", "")
+    description = data.get("description", "")
+    framework = data.get("framework", "n/a")
+    parameters = data.get("parameters", "")
+    license_str = data.get("license", "")
+    risk_level = data.get("risk_level", "")
+    risk_score = data.get("risk_score", "")
+
+    info_lines = [f"[bold]{author}/{model_name}[/bold]"]
+    if description:
+        info_lines.append(f"{description[:120]}")
+    info_lines.append(f"Framework: {framework}  Parameters: {parameters}")
+    if license_str:
+        info_lines.append(f"License: {license_str}")
+    if risk_level:
+        color = "red" if risk_level == "CRITICAL" else "yellow" if risk_level == "HIGH" else "cyan"
+        info_lines.append(f"HNDL Risk: [{color}]{risk_level} ({risk_score}/100)[/{color}]")
+
     console.print(Panel.fit(
-        f"[bold]{model.get('name', name)}[/bold]\n"
-        f"Version: {model.get('version', 'n/a')}\n"
-        f"Framework: {model.get('framework', 'n/a')}\n"
-        f"Description: {model.get('description', '')}",
+        "\n".join(info_lines),
         title=f"Model: {name}",
         border_style="blue",
     ))
@@ -216,30 +231,32 @@ def pull_cmd(name: str) -> None:
     # File listing
     files = data.get("files", [])
     if files:
-        table = Table(title="Files")
-        table.add_column("Path", style="cyan")
+        table = Table(title=f"Files ({len(files)})")
+        table.add_column("Filename", style="cyan")
         table.add_column("Size", justify="right")
         table.add_column("SHA3-256", style="dim")
         for f in files:
             size = f.get("size", 0)
             size_str = _human_size(size)
-            table.add_row(f.get("path", "?"), size_str, f.get("hash_value", "")[:16] + "...")
+            fname = f.get("filename", f.get("path", "?"))
+            fhash = f.get("sha3_256_hash", f.get("hash_value", ""))
+            table.add_row(fname, size_str, (fhash[:20] + "...") if fhash else "?")
         console.print(table)
 
     # Signatures
     sigs = data.get("signatures", [])
     if sigs:
-        table = Table(title="Signatures")
-        table.add_column("Signer", style="cyan")
-        table.add_column("Algorithm")
-        table.add_column("Signed At")
-        table.add_column("Type")
+        table = Table(title=f"Signature Chain ({len(sigs)})")
+        table.add_column("Role", style="dim")
+        table.add_column("Signer DID", style="cyan")
+        table.add_column("Algorithm", style="magenta")
+        table.add_column("Signed At", style="dim")
         for s in sigs:
             table.add_row(
-                s.get("signer", "?"),
+                s.get("attestation_type", "?"),
+                s.get("signer_did", s.get("signer", "?")),
                 s.get("algorithm", "?"),
                 s.get("signed_at", "?"),
-                s.get("attestation_type", "?"),
             )
         console.print(table)
 
@@ -266,10 +283,17 @@ def verify_cmd(name: str) -> None:
     verified = data.get("verified", False)
     sigs = data.get("signatures", [])
 
+    # File integrity info
+    file_info = data.get("file_integrity", {})
+    total_files = file_info.get("total_files", 0)
+    matched = file_info.get("matched", 0)
+    source = file_info.get("source", "unknown")
+
     if verified:
         console.print(Panel.fit(
             f"[bold green]VERIFIED[/bold green]  {name}\n\n"
-            f"All {len(sigs)} signature(s) are valid.",
+            f"[green]OK[/green] All {len(sigs)} signature(s) are valid.\n"
+            f"[green]OK[/green] {matched}/{total_files} files match source ({source})",
             title="Verification Result",
             border_style="green",
         ))
@@ -282,24 +306,29 @@ def verify_cmd(name: str) -> None:
         ))
 
     if sigs:
-        table = Table(title="Signature Details")
+        table = Table(title="Signature Chain")
+        table.add_column("Role", style="dim")
         table.add_column("Signer DID", style="cyan")
-        table.add_column("Algorithm")
-        table.add_column("Status")
+        table.add_column("Algorithm", style="magenta")
+        table.add_column("Signed At", style="dim")
         for s in sigs:
-            status = s.get("status", "unknown")
-            style = "green" if status == "valid" else "red"
-            table.add_row(
-                s.get("signer", "?"),
-                s.get("algorithm", "?"),
-                f"[{style}]{status}[/{style}]",
-            )
+            did = s.get("signer_did", s.get("signer", "?"))
+            algo = s.get("algorithm", "?")
+            role = s.get("attestation_type", "unknown")
+            signed_at = s.get("signed_at", "?")
+            table.add_row(role, did, algo, signed_at)
         console.print(table)
 
+    if total_files > 0:
+        mismatched = file_info.get("mismatched", 0)
+        missing = file_info.get("missing", 0)
+        console.print(f"\n[bold]File Integrity:[/bold] {matched}/{total_files} matched, {mismatched} mismatched, {missing} missing")
+        console.print(f"[dim]Source: {source}[/dim]")
+
     if has_pqc():
-        console.print("[dim]Local PQC verification: available (liboqs detected)[/dim]")
+        console.print("\n[dim]Local PQC verification: available (liboqs detected)[/dim]")
     else:
-        console.print("[dim]Local PQC verification: unavailable (install liboqs for local verify)[/dim]")
+        console.print("\n[dim]Local PQC verification: unavailable (install liboqs for local verify)[/dim]")
 
     if not verified:
         sys.exit(1)
