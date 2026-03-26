@@ -1,5 +1,33 @@
 ---
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
+
+const step2Code = `<span class="text-electric">from</span> quantumshield <span class="text-electric">import</span> AgentIdentity
+
+<span class="text-gray-500"># Create a new PQC-native agent identity</span>
+agent = AgentIdentity.create(
+    name=<span class="text-quantum">"my-copilot"</span>,
+    capabilities=[<span class="text-quantum">"read:data"</span>, <span class="text-quantum">"write:reports"</span>]
+)
+
+<span class="text-gray-500"># Sign an action</span>
+credential = agent.sign_action(
+    action=<span class="text-quantum">"generate_report"</span>,
+    target=<span class="text-quantum">"quarterly-financials.pdf"</span>
+)
+
+print(f<span class="text-quantum">"Agent DID: {agent.did}"</span>)
+print(f<span class="text-quantum">"Algorithm: ML-DSA-65"</span>)`;
+
+const step3Code = `<span class="text-electric">from</span> quantumshield <span class="text-electric">import</span> ModelManifest
+
+<span class="text-gray-500"># Create a manifest from your model directory</span>
+manifest = ModelManifest.from_model(<span class="text-quantum">"./my-model/"</span>)
+
+<span class="text-gray-500"># Sign with your agent identity</span>
+manifest.sign(agent.signing_keypair)
+
+<span class="text-gray-500"># Push to the registry</span>
+manifest.save(<span class="text-quantum">"./my-model/quantmrkt-manifest.json"</span>)`;
 ---
 
 <MarketingLayout title="Quickstart" description="Get started with QuantaMrkt in minutes.">
@@ -19,22 +47,7 @@ import MarketingLayout from '../../layouts/MarketingLayout.astro';
     <section class="mb-12">
       <h2 class="mb-4 text-2xl font-bold text-white">2. Create an Agent Identity</h2>
       <div class="card overflow-hidden">
-        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code><span class="text-electric">from</span> quantumshield <span class="text-electric">import</span> AgentIdentity
-
-<span class="text-gray-500"># Create a new PQC-native agent identity</span>
-agent = AgentIdentity.create(
-    name=<span class="text-quantum">"my-copilot"</span>,
-    capabilities=[<span class="text-quantum">"read:data"</span>, <span class="text-quantum">"write:reports"</span>]
-)
-
-<span class="text-gray-500"># Sign an action</span>
-credential = agent.sign_action(
-    action=<span class="text-quantum">"generate_report"</span>,
-    target=<span class="text-quantum">"quarterly-financials.pdf"</span>
-)
-
-print(f<span class="text-quantum">"Agent DID: {agent.did}"</span>)
-print(f<span class="text-quantum">"Algorithm: ML-DSA-65"</span>)</code></pre>
+        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code set:html={step2Code} /></pre>
       </div>
     </section>
 
@@ -42,16 +55,7 @@ print(f<span class="text-quantum">"Algorithm: ML-DSA-65"</span>)</code></pre>
     <section class="mb-12">
       <h2 class="mb-4 text-2xl font-bold text-white">3. Sign a Model</h2>
       <div class="card overflow-hidden">
-        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code><span class="text-electric">from</span> quantumshield <span class="text-electric">import</span> ModelManifest
-
-<span class="text-gray-500"># Create a manifest from your model directory</span>
-manifest = ModelManifest.from_model(<span class="text-quantum">"./my-model/"</span>)
-
-<span class="text-gray-500"># Sign with your agent identity</span>
-manifest.sign(agent.signing_keypair)
-
-<span class="text-gray-500"># Push to the registry</span>
-manifest.save(<span class="text-quantum">"./my-model/quantmrkt-manifest.json"</span>)</code></pre>
+        <pre class="overflow-x-auto font-mono text-sm text-gray-300"><code set:html={step3Code} /></pre>
       </div>
     </section>
 

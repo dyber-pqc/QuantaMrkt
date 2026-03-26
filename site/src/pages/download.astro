@@ -98,8 +98,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           <button data-copy="irm https://quantamrkt.com/install.ps1 | iex" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
         </div>
         <div class="flex items-center gap-2 mb-3">
-          <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" class="text-[10px] text-gray-500 hover:text-gray-300 transition-colors underline">Download .exe</a>
-          <span class="text-yellow-500/60 border border-yellow-500/20 rounded px-1 py-0.5 text-[9px]">Soon</span>
+          <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-[10px] text-electric hover:text-electric/80 transition-colors underline">Download .exe</a>
+          <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-electric/60 border border-electric/20 rounded px-1 py-0.5 text-[9px] hover:bg-electric/5 transition-colors">GitHub Releases</a>
         </div>
         <a href="https://pypi.org/project/quantumshield/" target="_blank" class="block w-full rounded-lg bg-electric text-navy-900 font-semibold text-xs py-2 hover:bg-electric/90 transition-colors text-center mt-auto">
           Install
@@ -131,25 +131,25 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     <div class="mt-6 rounded-xl border border-white/5 bg-navy-800 p-5">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-semibold text-white">Standalone Binaries</h3>
-        <span class="text-yellow-500/80 border border-yellow-500/20 bg-yellow-500/5 rounded-full px-3 py-0.5 text-[10px] font-medium">Coming Soon</span>
+        <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-electric border border-electric/20 bg-electric/5 rounded-full px-3 py-0.5 text-[10px] font-medium hover:bg-electric/10 transition-colors">GitHub Releases</a>
       </div>
       <p class="text-xs text-gray-500 mb-4">No Python required. Self-contained executables for all platforms.</p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left opacity-50 cursor-not-allowed">
-          <p class="text-xs font-medium text-gray-400">quantumshield-linux-x86_64</p>
-          <p class="text-[10px] text-gray-600">Linux x86_64</p>
-        </button>
-        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left opacity-50 cursor-not-allowed">
-          <p class="text-xs font-medium text-gray-400">quantumshield-macos-x86_64</p>
-          <p class="text-[10px] text-gray-600">macOS x86_64</p>
-        </button>
-        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left opacity-50 cursor-not-allowed">
-          <p class="text-xs font-medium text-gray-400">quantumshield-windows-x86_64.exe</p>
-          <p class="text-[10px] text-gray-600">Windows x86_64</p>
-        </button>
+        <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left hover:border-electric/20 hover:bg-electric/5 transition-colors">
+          <p class="text-xs font-medium text-gray-300">quantumshield-linux-x86_64</p>
+          <p class="text-[10px] text-gray-500">Linux x86_64</p>
+        </a>
+        <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left hover:border-electric/20 hover:bg-electric/5 transition-colors">
+          <p class="text-xs font-medium text-gray-300">quantumshield-macos-x86_64</p>
+          <p class="text-[10px] text-gray-500">macOS x86_64</p>
+        </a>
+        <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left hover:border-electric/20 hover:bg-electric/5 transition-colors">
+          <p class="text-xs font-medium text-gray-300">quantumshield-windows-x86_64.exe</p>
+          <p class="text-[10px] text-gray-500">Windows x86_64</p>
+        </a>
       </div>
-      <p class="text-[10px] text-gray-600 mt-3">
-        Binaries will be available on <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" class="text-electric hover:underline">GitHub Releases</a> when ready.
+      <p class="text-[10px] text-gray-500 mt-3">
+        Standalone binaries are built automatically on each release via GitHub Actions. Download from <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" class="text-electric hover:underline">GitHub Releases</a>.
       </p>
     </div>
   </section>
@@ -224,7 +224,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
             <svg class="h-5 w-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <h3 class="text-sm font-semibold text-white">Standalone Binary</h3>
           </div>
-          <p class="text-xs text-gray-500">No Python needed. Coming soon for all platforms.</p>
+          <p class="text-xs text-gray-500">No Python needed. Available on <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-electric hover:underline">GitHub Releases</a>.</p>
         </div>
         <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
           <div class="flex items-center gap-2 mb-2">
@@ -257,7 +257,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
                 <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
               </td>
               <td class="px-5 py-3 text-center">
-                <span class="text-xs text-yellow-500">Coming Soon</span>
+                <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-xs text-electric hover:underline">GitHub Releases</a>
               </td>
             </tr>
             <tr class="border-b border-white/[0.03]">
@@ -267,7 +267,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
                 <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
               </td>
               <td class="px-5 py-3 text-center">
-                <span class="text-xs text-yellow-500">Coming Soon</span>
+                <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-xs text-electric hover:underline">GitHub Releases</a>
               </td>
             </tr>
             <tr class="border-b border-white/[0.03] bg-white/[0.01]">
@@ -277,7 +277,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
                 <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
               </td>
               <td class="px-5 py-3 text-center">
-                <span class="text-xs text-yellow-500">Coming Soon</span>
+                <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-xs text-electric hover:underline">GitHub Releases</a>
               </td>
             </tr>
             <tr>
@@ -287,7 +287,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
                 <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
               </td>
               <td class="px-5 py-3 text-center">
-                <span class="text-xs text-yellow-500">Coming Soon</span>
+                <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" rel="noopener" class="text-xs text-electric hover:underline">GitHub Releases</a>
               </td>
             </tr>
           </tbody>

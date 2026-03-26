@@ -46,7 +46,7 @@ jobs:
       - name: Build with PyInstaller
         working-directory: lib
         run: |
-          pyinstaller ${{ matrix.pyinstaller_args }} src/quantumshield/cli/main.py
+          pyinstaller ${{ matrix.pyinstaller_args }} --hidden-import quantumshield --collect-submodules quantumshield src/quantumshield/cli/main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
