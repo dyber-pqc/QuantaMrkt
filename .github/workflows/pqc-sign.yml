@@ -53,7 +53,10 @@ jobs:
                   print('ERROR: Invalid key hex in secrets')
           else:
               print('No valid keys found. Generating new ML-DSA-87 keypair...')
-              signer = oqs.Signature('Dilithium5')
+              avail = oqs.get_enabled_sig_mechanisms()
+              alg = 'ML-DSA-87' if 'ML-DSA-87' in avail else 'Dilithium5'
+              print(f'Using algorithm: {alg}')
+              signer = oqs.Signature(alg)
               pk = signer.generate_keypair()
               sk = signer.export_secret_key()
               print()

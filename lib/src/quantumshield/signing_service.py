@@ -41,7 +41,17 @@ PLATFORM_DID = "did:web:quantamrkt.com:chain:authority"
 API_URL = os.environ.get("QUANTAMRKT_API_URL", "https://quantamrkt.com")
 API_TOKEN = os.environ.get("QUANTAMRKT_API_TOKEN")
 ALGORITHM = "ML-DSA-87"
-OQS_ALGORITHM = "Dilithium5"  # ML-DSA-87 = Dilithium5 in liboqs
+
+# Detect correct algorithm name — liboqs >= 0.11 uses "ML-DSA-87", older uses "Dilithium5"
+_available = oqs.get_enabled_sig_mechanisms()
+if "ML-DSA-87" in _available:
+    OQS_ALGORITHM = "ML-DSA-87"
+elif "Dilithium5" in _available:
+    OQS_ALGORITHM = "Dilithium5"
+else:
+    print(f"ERROR: Neither ML-DSA-87 nor Dilithium5 found. Available: {_available}")
+    sys.exit(1)
+print(f"Using liboqs algorithm: {OQS_ALGORITHM}")
 
 
 # ---------------------------------------------------------------------------
