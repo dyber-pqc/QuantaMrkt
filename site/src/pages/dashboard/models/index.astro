@@ -97,12 +97,35 @@ function parseTags(tags: string | null | undefined): string[] {
           Sign your first model from the CLI or upload one here. Signed models appear in the public marketplace with your verification stamp.
         </p>
 
-        <div class="max-w-md mx-auto mb-6">
-          <p class="text-[11px] text-gray-600 mb-2 uppercase tracking-wider font-medium">Quick start via CLI</p>
-          <div class="rounded-md bg-navy-900 border border-white/5 px-4 py-3 text-left">
-            <code class="text-xs font-mono text-gray-400">
-              <span class="text-gray-600">$</span> quantumshield registry sign ./my-model
-            </code>
+        <div class="max-w-lg mx-auto mb-6 text-left space-y-3">
+          <p class="text-[11px] text-gray-600 mb-3 uppercase tracking-wider font-medium text-center">Get started in 4 steps</p>
+          <div class="rounded-md bg-navy-900 border border-white/5 px-4 py-2.5 flex items-start gap-3">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/15 text-electric text-[10px] font-bold shrink-0 mt-0.5">1</span>
+            <div>
+              <p class="text-xs text-gray-300 font-medium">Install the CLI</p>
+              <code class="text-[11px] font-mono text-gray-500">pip install quantumshield</code>
+            </div>
+          </div>
+          <div class="rounded-md bg-navy-900 border border-white/5 px-4 py-2.5 flex items-start gap-3">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/15 text-electric text-[10px] font-bold shrink-0 mt-0.5">2</span>
+            <div>
+              <p class="text-xs text-gray-300 font-medium">Authenticate</p>
+              <code class="text-[11px] font-mono text-gray-500">quantumshield login</code>
+            </div>
+          </div>
+          <div class="rounded-md bg-navy-900 border border-white/5 px-4 py-2.5 flex items-start gap-3">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/15 text-electric text-[10px] font-bold shrink-0 mt-0.5">3</span>
+            <div>
+              <p class="text-xs text-gray-300 font-medium">Create a signing identity</p>
+              <code class="text-[11px] font-mono text-gray-500">quantumshield agent create my-signer --set-default</code>
+            </div>
+          </div>
+          <div class="rounded-md bg-navy-900 border border-white/5 px-4 py-2.5 flex items-start gap-3">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-quantum/15 text-quantum text-[10px] font-bold shrink-0 mt-0.5">4</span>
+            <div>
+              <p class="text-xs text-gray-300 font-medium">Push your model</p>
+              <code class="text-[11px] font-mono text-gray-500">quantumshield push ./my-model --name yourname/model-name</code>
+            </div>
           </div>
         </div>
 
