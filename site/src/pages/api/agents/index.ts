@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getAgents, createAgent, logActivity } from '../../../lib/db';
 import { getApiUser } from '../../../lib/api-auth';
 import { appendLogEntry } from '../../../lib/transparency';
+import { createBlock } from '../../../lib/pqc-chain';
 
 export const GET: APIRoute = async ({ url, locals }) => {
   try {
@@ -67,6 +68,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
       target_id: did,
       metadata: { name, algorithm, capabilities: capabilities || [] },
     });
+
+    // Create a new block from pending transparency log entries
+    try {
+      await createBlock(db);
+    } catch {
+      // Block creation is non-critical
+    }
 
     return new Response(JSON.stringify(agent), {
       status: 201,

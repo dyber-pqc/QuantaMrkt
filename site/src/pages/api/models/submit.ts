@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { createModel, createVersion, logActivity } from '../../../lib/db';
 import { getApiUser } from '../../../lib/api-auth';
 import { appendLogEntry, sha256 } from '../../../lib/transparency';
+import { createBlock } from '../../../lib/pqc-chain';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const json = (obj: unknown, status = 200) =>
@@ -206,6 +207,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
         risk_score: riskScore,
       },
     });
+
+    // Create a new block from pending transparency log entries
+    try {
+      await createBlock(db);
+    } catch {
+      // Block creation is non-critical
+    }
 
     return json({ slug: model.slug, success: true });
   } catch (err: any) {

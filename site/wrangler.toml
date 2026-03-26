@@ -27,6 +27,9 @@ database_id = "d4d02fc6-3c5c-49f6-a756-ff8480adbcdb"
 binding = "MANIFESTS"
 bucket_name = "quantmrkt-manifests"
 
+[triggers]
+crons = ["0 * * * *"]
+
 # Secrets (set via `wrangler secret put`):
 # GITHUB_CLIENT_SECRET
 # SESSION_SECRET

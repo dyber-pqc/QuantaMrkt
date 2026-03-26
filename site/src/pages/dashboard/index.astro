@@ -150,17 +150,17 @@ function timeAgo(dateStr: string): string {
               </div>
             </div>
           </a>
-          <a href="/models" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
+          <button id="sync-hf-btn" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group text-left w-full">
             <div class="flex items-center gap-3">
               <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors flex-shrink-0">
-                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </div>
               <div>
-                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Browse Models</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Explore the model marketplace</p>
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Sync HuggingFace</p>
+                <p id="sync-status" class="text-[10px] text-gray-500 mt-0.5">Sync top models from HF</p>
               </div>
             </div>
-          </a>
+          </button>
         </div>
       </div>
 
@@ -383,4 +383,31 @@ function timeAgo(dateStr: string): string {
       </div>
     </div>
   </div>
+  <script>
+    document.getElementById('sync-hf-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('sync-hf-btn') as HTMLButtonElement;
+      const statusEl = document.getElementById('sync-status')!;
+      btn.disabled = true;
+      statusEl.textContent = 'Syncing...';
+      statusEl.className = 'text-[10px] text-electric mt-0.5';
+
+      try {
+        const res = await fetch('/api/sync/trigger', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.error) {
+          statusEl.textContent = data.error;
+          statusEl.className = 'text-[10px] text-red-400 mt-0.5';
+        } else {
+          statusEl.textContent = `Done! ${data.created} created, ${data.updated} updated${data.errors?.length ? `, ${data.errors.length} errors` : ''}`;
+          statusEl.className = 'text-[10px] text-green-400 mt-0.5';
+        }
+      } catch (e) {
+        statusEl.textContent = 'Sync failed. Try again.';
+        statusEl.className = 'text-[10px] text-red-400 mt-0.5';
+      }
+
+      btn.disabled = false;
+    });
+  </script>
 </DashboardLayout>
