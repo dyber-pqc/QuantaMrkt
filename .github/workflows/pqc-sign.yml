@@ -17,11 +17,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install liboqs (C library)
+      - name: Install liboqs C library (pinned to 0.12.0 for compatibility)
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build libssl-dev
-          git clone --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+          git clone --branch 0.12.0 --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
           cd /tmp/liboqs
           mkdir build && cd build
           cmake -GNinja -DBUILD_SHARED_LIBS=ON ..
@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install liboqs-python httpx
+          pip install liboqs-python==0.12.0 httpx
           cd lib && pip install -e .
 
       - name: Generate or load ML-DSA-87 keypair
@@ -47,14 +47,27 @@ jobs:
           pk_hex = os.environ.get('PLATFORM_ML_DSA_PUBLIC_KEY', '')
           sk_hex = os.environ.get('PLATFORM_ML_DSA_PRIVATE_KEY', '')
 
+          need_new_key = True
           if pk_hex and sk_hex and len(pk_hex) > 100 and len(sk_hex) > 100:
               try:
-                  bytes.fromhex(pk_hex)
-                  bytes.fromhex(sk_hex)
-                  print('Keys loaded from secrets - ready to sign')
-              except ValueError:
-                  print('ERROR: Invalid key hex in secrets')
-          else:
+                  pk = bytes.fromhex(pk_hex)
+                  sk = bytes.fromhex(sk_hex)
+                  # Test that the key actually works with this liboqs version
+                  avail = oqs.get_enabled_sig_mechanisms()
+                  alg = 'Dilithium5' if 'Dilithium5' in avail else 'ML-DSA-87'
+                  signer = oqs.Signature(alg, sk)
+                  msg = b'test message for key validation'
+                  sig = signer.sign(msg)
+                  verifier = oqs.Signature(alg)
+                  if verifier.verify(msg, sig, pk):
+                      print(f'Keys loaded and verified with {alg} - ready to sign')
+                      need_new_key = False
+                  else:
+                      print('Key self-verification failed - generating new keypair')
+              except Exception as e:
+                  print(f'Key load failed ({e}) - generating new keypair')
+
+          if need_new_key:
               print('No valid keys found. Generating new ML-DSA-87 keypair...')
               avail = oqs.get_enabled_sig_mechanisms()
               alg = 'ML-DSA-87' if 'ML-DSA-87' in avail else 'Dilithium5'
