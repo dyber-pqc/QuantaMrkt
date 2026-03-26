@@ -39,11 +39,14 @@ jobs:
         env:
           PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
           PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
+          GH_TOKEN: ${{ secrets.QUANTAMRKT_API_TOKEN }}
         run: |
           python -c "
-          import os, oqs
+          import os, oqs, subprocess, json
+
           pk_hex = os.environ.get('PLATFORM_ML_DSA_PUBLIC_KEY', '')
           sk_hex = os.environ.get('PLATFORM_ML_DSA_PRIVATE_KEY', '')
+
           if pk_hex and sk_hex and len(pk_hex) > 100 and len(sk_hex) > 100:
               try:
                   bytes.fromhex(pk_hex)
@@ -59,23 +62,29 @@ jobs:
               signer = oqs.Signature(alg)
               pk = signer.generate_keypair()
               sk = signer.export_secret_key()
+
+              pk_hex = pk.hex()
+              sk_hex = sk.hex()
+
+              # Mask the private key so it never appears in logs
+              print(f'::add-mask::{sk_hex}')
+
+              # Auto-save keys as GitHub secrets using gh CLI
+              repo = 'dyber-pqc/QuantaMrkt'
+              print('Saving PLATFORM_ML_DSA_PUBLIC_KEY to GitHub secrets...')
+              subprocess.run(['gh', 'secret', 'set', 'PLATFORM_ML_DSA_PUBLIC_KEY', '--repo', repo, '--body', pk_hex], check=True)
+              print('Saving PLATFORM_ML_DSA_PRIVATE_KEY to GitHub secrets...')
+              subprocess.run(['gh', 'secret', 'set', 'PLATFORM_ML_DSA_PRIVATE_KEY', '--repo', repo, '--body', sk_hex], check=True)
+
               print()
-              print('=' * 80)
-              print('NEW ML-DSA-87 PLATFORM KEYPAIR GENERATED')
-              print('=' * 80)
+              print(f'Keys generated and saved as GitHub secrets automatically.')
+              print(f'Public key: {len(pk)} bytes ({len(pk_hex)} hex chars)')
+              print(f'Private key: {len(sk)} bytes (saved securely, masked in logs)')
               print()
-              print('STEP 1: Go to https://github.com/dyber-pqc/QuantaMrkt/settings/secrets/actions')
+              print(f'Public key (safe to share):')
+              print(pk_hex[:80] + '...')
               print()
-              print('STEP 2: Update PLATFORM_ML_DSA_PUBLIC_KEY with this value:')
-              print(pk.hex())
-              print()
-              print('STEP 3: Update PLATFORM_ML_DSA_PRIVATE_KEY with this value:')
-              print(sk.hex())
-              print()
-              print(f'Public key: {len(pk)} bytes, Private key: {len(sk)} bytes')
-              print('=' * 80)
-              print()
-              print('After saving both secrets, re-run this workflow to sign all models.')
+              print('Re-run this workflow now to sign all models with the new keys.')
           "
 
       - name: Sign all models
