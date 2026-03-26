@@ -9,7 +9,7 @@ import os
 import warnings
 
 from quantumshield.core.algorithms import SignatureAlgorithm
-from quantumshield.core.keys import SigningKeypair, _BACKEND, _HAS_PQC
+from quantumshield.core.keys import SigningKeypair, _BACKEND
 
 if _BACKEND == "liboqs":
     import oqs  # type: ignore[import-untyped]

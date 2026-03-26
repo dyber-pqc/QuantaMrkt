@@ -40,9 +40,7 @@ try:
     }
 except ImportError:
     try:
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-            Ed25519PrivateKey as _Ed25519PrivateKey,
-        )
+        from cryptography.hazmat.primitives.asymmetric import ed25519 as _ed25519_mod  # noqa: F401
 
         _BACKEND = "ed25519"
         warnings.warn(
