@@ -15,6 +15,7 @@ export interface Model {
   downloads: number;
   likes: number;
   verified: number;
+  category: string | null;
   source_url: string | null;
   source_platform: string | null;
   hf_repo_id: string | null;
@@ -112,9 +113,9 @@ export interface HndlAssessment {
 
 export async function getModels(
   db: D1Database,
-  opts: { q?: string; sort?: string; risk?: string; limit?: number; offset?: number } = {},
+  opts: { q?: string; sort?: string; risk?: string; category?: string; limit?: number; offset?: number } = {},
 ): Promise<{ models: Model[]; total: number }> {
-  const { q, sort, risk, limit = 20, offset = 0 } = opts;
+  const { q, sort, risk, category, limit = 20, offset = 0 } = opts;
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -126,6 +127,10 @@ export async function getModels(
   if (risk) {
     conditions.push('h.risk_level = ?');
     params.push(risk);
+  }
+  if (category) {
+    conditions.push('m.category = ?');
+    params.push(category);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

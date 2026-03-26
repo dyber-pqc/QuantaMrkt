@@ -6,6 +6,7 @@ const db = (Astro.locals as any).runtime?.env?.DB;
 const q = Astro.url.searchParams.get('q') || '';
 const sort = Astro.url.searchParams.get('sort') || 'downloads';
 const risk = Astro.url.searchParams.get('risk') || '';
+const category = Astro.url.searchParams.get('category') || '';
 
 const page = parseInt(Astro.url.searchParams.get('page') || '1', 10);
 const offset = (page - 1) * 20;
@@ -13,7 +14,14 @@ const offset = (page - 1) * 20;
 let models: any[] = [];
 let total = 0;
 if (db) {
-  const result = await getModels(db, { q, sort, risk: risk.toUpperCase() || undefined, limit: 20, offset });
+  const result = await getModels(db, {
+    q,
+    sort,
+    risk: risk.toUpperCase() || undefined,
+    category: category || undefined,
+    limit: 20,
+    offset,
+  });
   models = result.models;
   total = result.total;
 }
@@ -24,6 +32,28 @@ const sortOptions = [
   { label: 'Recently Updated', value: 'updated' },
 ];
 const riskFilters = ['All', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+
+const categoryTabs = [
+  { label: 'All', value: '', icon: 'grid' },
+  { label: 'Models', value: 'model', icon: 'cube' },
+  { label: 'Datasets', value: 'dataset', icon: 'database' },
+  { label: 'Tools', value: 'tool', icon: 'wrench' },
+];
+
+// Hero content based on category
+const heroContent: Record<string, { title: string; subtitle: string }> = {
+  '': { title: 'Model Hub', subtitle: 'Browse PQC-verified AI models, datasets, and tools' },
+  model: { title: 'Models', subtitle: 'PQC-verified AI models from leading providers' },
+  dataset: { title: 'Datasets', subtitle: 'Training datasets with quantum-safe provenance' },
+  tool: { title: 'PQC Tools & Infrastructure', subtitle: 'Open-source tools for quantum-safe AI systems' },
+};
+const hero = heroContent[category] || heroContent[''];
+
+// Page title
+const pageTitle = category === 'model' ? 'Models' : category === 'dataset' ? 'Datasets' : category === 'tool' ? 'PQC Tools' : 'Model Hub';
+
+// Item label for pagination
+const itemLabel = category === 'model' ? 'models' : category === 'dataset' ? 'datasets' : category === 'tool' ? 'tools' : 'items';
 
 function formatDownloads(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -56,12 +86,44 @@ function buildUrl(params: Record<string, string>): string {
 }
 ---
 
-<MarketingLayout title="Model Hub" description="Browse PQC-verified AI models in the quantum-safe marketplace">
+<MarketingLayout title={pageTitle} description={hero.subtitle}>
   <div class="mx-auto max-w-7xl px-6 py-12">
     <!-- Hero -->
     <div class="text-center mb-10">
-      <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Model Hub</h1>
-      <p class="text-base text-gray-400 max-w-xl mx-auto">Browse PQC-verified AI models. Every signature is quantum-safe.</p>
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">{hero.title}</h1>
+      <p class="text-base text-gray-400 max-w-xl mx-auto">{hero.subtitle}</p>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex items-center justify-center gap-1 mb-8">
+      {categoryTabs.map((tab) => {
+        const isActive = category === tab.value;
+        const href = tab.value ? `/models?category=${tab.value}` : '/models';
+        return (
+          <a
+            href={href}
+            class={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              isActive
+                ? 'bg-electric/15 text-electric border border-electric/30'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200 border border-transparent'
+            }`}
+          >
+            {tab.icon === 'grid' && (
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+            )}
+            {tab.icon === 'cube' && (
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+            )}
+            {tab.icon === 'database' && (
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3" stroke-width="2" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" /></svg>
+            )}
+            {tab.icon === 'wrench' && (
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" stroke-width="2" /></svg>
+            )}
+            {tab.label}
+          </a>
+        );
+      })}
     </div>
 
     <!-- Search -->
@@ -69,6 +131,7 @@ function buildUrl(params: Record<string, string>): string {
       <form method="get" action="/models">
         <input type="hidden" name="sort" value={sort} />
         {risk && <input type="hidden" name="risk" value={risk} />}
+        {category && <input type="hidden" name="category" value={category} />}
         <div class="relative">
           <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -77,7 +140,7 @@ function buildUrl(params: Record<string, string>): string {
             type="text"
             name="q"
             value={q}
-            placeholder="Search models by name, author, or task..."
+            placeholder={category === 'dataset' ? 'Search datasets...' : category === 'tool' ? 'Search tools...' : 'Search models by name, author, or task...'}
             class="w-full rounded-xl border border-white/10 bg-navy-800 pl-12 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
           />
         </div>
@@ -90,7 +153,7 @@ function buildUrl(params: Record<string, string>): string {
         <span class="text-xs text-gray-500 mr-1">Sort:</span>
         {sortOptions.map((opt) => (
           <a
-            href={buildUrl({ sort: opt.value, q, risk })}
+            href={buildUrl({ sort: opt.value, q, risk, category })}
             class={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
               sort === opt.value
                 ? 'bg-electric/15 text-electric'
@@ -108,7 +171,7 @@ function buildUrl(params: Record<string, string>): string {
           const isActive = (risk === '' && level === 'All') || risk.toUpperCase() === level;
           return (
             <a
-              href={buildUrl({ risk: riskVal, sort, q })}
+              href={buildUrl({ risk: riskVal, sort, q, category })}
               class={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                 isActive
                   ? 'bg-white/10 text-white'
@@ -122,19 +185,30 @@ function buildUrl(params: Record<string, string>): string {
       </div>
     </div>
 
-    <!-- Model List -->
+    <!-- Item List -->
     {models.length > 0 ? (
       <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden divide-y divide-white/[0.04]">
         {models.map((model) => {
           const tags = parseTags(model.tags);
           const riskLevel = model.risk_level || '';
           const badge = riskBadgeClass(riskLevel);
+          const cat = model.category || 'model';
           return (
             <a href={`/models/${model.slug}`} class="flex items-start gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors group">
-              {/* Author avatar */}
-              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-gray-400 flex-shrink-0 mt-0.5">
-                {model.author?.[0]?.toUpperCase() || '?'}
-              </div>
+              {/* Category-specific icon */}
+              {cat === 'dataset' ? (
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-400 flex-shrink-0 mt-0.5">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3" stroke-width="2" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" /></svg>
+                </div>
+              ) : cat === 'tool' ? (
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 flex-shrink-0 mt-0.5">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" stroke-width="2" /></svg>
+                </div>
+              ) : (
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-gray-400 flex-shrink-0 mt-0.5">
+                  {model.author?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
 
               {/* Main content */}
               <div class="flex-1 min-w-0">
@@ -146,16 +220,25 @@ function buildUrl(params: Record<string, string>): string {
                   {model.ollama_name && (
                     <span class="inline-flex items-center gap-1 rounded-md bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10px] font-medium text-gray-400" title={`ollama pull ${model.ollama_name}`}>Ollama</span>
                   )}
-                  {model.verified ? (
-                    <span class="inline-flex items-center gap-1 text-[11px] text-quantum">
-                      <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
-                      PQC Verified
-                    </span>
+                  {/* Category-specific badges */}
+                  {cat === 'tool' ? (
+                    model.verified ? (
+                      <span class="inline-flex items-center gap-1 rounded-md bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 text-[10px] font-medium text-green-400">Available</span>
+                    ) : (
+                      <span class="inline-flex items-center gap-1 rounded-md bg-yellow-500/10 border border-yellow-500/20 px-1.5 py-0.5 text-[10px] font-medium text-yellow-400">In Development</span>
+                    )
                   ) : (
-                    <span class="inline-flex items-center gap-1 text-[11px] text-gray-500">
-                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-                      Unverified
-                    </span>
+                    model.verified ? (
+                      <span class="inline-flex items-center gap-1 text-[11px] text-quantum">
+                        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                        PQC Verified
+                      </span>
+                    ) : (
+                      <span class="inline-flex items-center gap-1 text-[11px] text-gray-500">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                        Unverified
+                      </span>
+                    )
                   )}
                 </div>
 
@@ -186,6 +269,9 @@ function buildUrl(params: Record<string, string>): string {
                 ) : (
                   <span class="text-[10px] text-gray-700">Not verified</span>
                 )}
+                {cat === 'dataset' && model.source_url && (
+                  <span class="text-[10px] text-electric/70">Source available</span>
+                )}
               </div>
             </a>
           );
@@ -193,8 +279,8 @@ function buildUrl(params: Record<string, string>): string {
       </div>
     ) : (
       <div class="rounded-xl border border-white/5 bg-navy-800 px-5 py-16 text-center">
-        <p class="text-sm text-gray-400 mb-1">No models found</p>
-        <p class="text-xs text-gray-600">{q ? `No results for "${q}". Try a different search.` : 'Models will appear here once published.'}</p>
+        <p class="text-sm text-gray-400 mb-1">No {itemLabel} found</p>
+        <p class="text-xs text-gray-600">{q ? `No results for "${q}". Try a different search.` : `${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} will appear here once published.`}</p>
       </div>
     )}
 
@@ -206,15 +292,15 @@ function buildUrl(params: Record<string, string>): string {
       const hasNext = page < totalPages;
       return (
         <div class="flex items-center justify-between mt-6 text-xs text-gray-500">
-          <span>Showing {models.length} of {total} models (page {page} of {totalPages || 1})</span>
+          <span>Showing {models.length} of {total} {itemLabel} (page {page} of {totalPages || 1})</span>
           <div class="flex items-center gap-2">
             {hasPrev ? (
-              <a href={buildUrl({ page: String(page - 1), sort, q, risk })} class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors">Prev</a>
+              <a href={buildUrl({ page: String(page - 1), sort, q, risk, category })} class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors">Prev</a>
             ) : (
               <span class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-600 cursor-not-allowed">Prev</span>
             )}
             {hasNext ? (
-              <a href={buildUrl({ page: String(page + 1), sort, q, risk })} class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors">Next</a>
+              <a href={buildUrl({ page: String(page + 1), sort, q, risk, category })} class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors">Next</a>
             ) : (
               <span class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-600 cursor-not-allowed">Next</span>
             )}
