@@ -17,11 +17,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install liboqs C library (pinned to 0.12.0 for compatibility)
+      - name: Install liboqs C library (pinned to 0.14.0 to match Python bindings 0.14.1)
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build libssl-dev
-          git clone --branch 0.12.0 --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+          git clone --branch 0.14.0 --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
           cd /tmp/liboqs
           mkdir build && cd build
           cmake -GNinja -DBUILD_SHARED_LIBS=ON ..
@@ -31,7 +31,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install liboqs-python==0.12.0 httpx
+          pip install liboqs-python==0.14.1 httpx
           cd lib && pip install -e .
 
       - name: Generate or load ML-DSA-87 keypair
