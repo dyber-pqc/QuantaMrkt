@@ -20,7 +20,8 @@ from rich.table import Table
 
 console = Console()
 
-# GitHub OAuth Device Flow client ID
+# GitHub OAuth Device Flow client ID (public, safe to embed)
+# This is the OAuth App's public client ID, not a secret.
 _GITHUB_CLIENT_ID = "Ov23liuaDLn9Xtgh2uCO"
 
 
