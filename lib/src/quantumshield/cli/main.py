@@ -123,10 +123,9 @@ def login_cmd() -> None:
 @click.option("--name", "-n", required=True, help="Model slug (org/model-name).")
 def push_cmd(path: str, name: str) -> None:
     """Push a model directory to the registry."""
-    from quantumshield.cli.config import get_auth_token, is_logged_in
+    from quantumshield.cli.config import is_logged_in
     from quantumshield.core.keystore import (
         get_default_identity,
-        list_identities,
         save_identity,
         set_default_identity,
     )
@@ -171,7 +170,7 @@ def push_cmd(path: str, name: str) -> None:
                 reg.create_model(name)
             except RegistryError:
                 pass  # model may already exist
-            result = reg.push(manifest, name)
+            reg.push(manifest, name)
         except RegistryError as exc:
             console.print(f"[red]Push failed: {exc}[/red]")
             sys.exit(1)
@@ -252,8 +251,7 @@ def pull_cmd(name: str) -> None:
 @click.argument("name")
 def verify_cmd(name: str) -> None:
     """Verify a model's signatures."""
-    from quantumshield.core.keys import has_pqc
-    from quantumshield.core.signatures import verify as pq_verify
+    from quantumshield.core.keys import has_pqc  # noqa: F811
     from quantumshield.registry.signing import RegistryError, ShieldRegistry
 
     reg = ShieldRegistry()
@@ -666,7 +664,7 @@ def registry_push(namespace: str, manifest: str) -> None:
 
     reg = ShieldRegistry()
     try:
-        result = reg.push(m, namespace)
+        reg.push(m, namespace)
         console.print(f"[green]Manifest pushed to {namespace}.[/green]")
     except RegistryError as exc:
         console.print(f"[red]Push failed: {exc}[/red]")
