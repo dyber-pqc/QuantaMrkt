@@ -759,7 +759,7 @@ quantumshield verify {model.author}/{model.name}</pre>
                 {model.hf_repo_id ? `huggingface.co/${model.hf_repo_id}` : 'Source Repository'}
               </a>
             )}
-            <a href={`/api/transparency/${model.slug}`} target="_blank" class="flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors">
+            <a href={`/transparency?target_id=${model.slug}&target_type=model`} class="flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors">
               <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
               Transparency Log
             </a>

@@ -1,35 +1,48 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import type { User } from '../../lib/auth';
-import { getUserStats, getActivity, getUserByGithubId } from '../../lib/db';
+import { getUserStats, getActivity, getUserByGithubId, getUserModels } from '../../lib/db';
 
 const user = (Astro.locals as any).user as User | undefined;
 const db = (Astro.locals as any).runtime?.env?.DB;
-const greeting = user ? `Welcome back, ${user.login}` : 'Welcome';
 
 let stats = { modelCount: 0, agentCount: 0, verificationCount: 0 };
 let activity: any[] = [];
+let userModels: any[] = [];
+let dbUser: any = null;
 
 if (db && user) {
-  // Look up the DB user by github_id to get the internal user.id
-  const dbUser = await getUserByGithubId(db, (user as any).id ?? (user as any).github_id);
+  dbUser = await getUserByGithubId(db, (user as any).id ?? (user as any).github_id);
   if (dbUser) {
     stats = await getUserStats(db, dbUser.id);
-    activity = await getActivity(db, { userId: dbUser.id, limit: 10 });
+    activity = await getActivity(db, { userId: dbUser.id, limit: 5 });
+    userModels = await getUserModels(db, dbUser.login);
   }
 }
 
-const statCards = [
-  { label: 'Your Models', value: String(stats.modelCount), cta: stats.modelCount > 0 ? 'View models' : 'Sign your first model', href: '/dashboard/models' },
-  { label: 'Your Agents', value: String(stats.agentCount), cta: stats.agentCount > 0 ? 'View agents' : 'Register an agent', href: '/dashboard/agents' },
-  { label: 'Verifications', value: String(stats.verificationCount), cta: 'View details', href: '/dashboard/models' },
-  { label: 'CNSA 2.0', value: 'Not started', cta: 'Check compliance', href: '/dashboard/compliance' },
-];
+// CNSA 2.0 deadline: January 1, 2027
+const cnsaDeadline = new Date('2027-01-01T00:00:00Z');
+const now = new Date();
+const daysRemaining = Math.max(0, Math.ceil((cnsaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+const totalDays = Math.ceil((cnsaDeadline.getTime() - new Date('2025-01-01').getTime()) / (1000 * 60 * 60 * 24));
+const cnsaProgress = Math.min(100, Math.max(0, Math.round(((totalDays - daysRemaining) / totalDays) * 100)));
+
+// HNDL alerts: count of HIGH or CRITICAL risk models
+const hndlAlerts = userModels.filter((m: any) => {
+  const level = (m.risk_level || '').toUpperCase();
+  return level === 'HIGH' || level === 'CRITICAL';
+}).length;
+
+// Current date formatted
+const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+// Checklist state
+const hasModels = stats.modelCount > 0;
+const hasAgents = stats.agentCount > 0;
+const hasVerifications = stats.verificationCount > 0;
 
 function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = now - then;
+  const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
@@ -41,92 +54,332 @@ function timeAgo(dateStr: string): string {
 ---
 
 <DashboardLayout title="Overview">
-  <!-- Greeting -->
-  <p class="text-sm text-gray-400 mb-4">{greeting}</p>
 
-  <!-- Compact Stat Bar -->
-  <div class="flex items-center gap-px rounded-lg overflow-hidden border border-white/5 mb-5">
-    {statCards.map((stat, i) => (
-      <a href={stat.href} class={`flex-1 bg-navy-800 px-4 py-3 hover:bg-navy-700 transition-colors group ${i > 0 ? 'border-l border-white/5' : ''}`}>
-        <p class="text-lg font-semibold text-white font-mono leading-none">{stat.value}</p>
-        <p class="text-xs text-gray-500 mt-1">{stat.label}</p>
-        <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stat.cta}</p>
-      </a>
-    ))}
+  <!-- Top Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
+    <div>
+      <h1 class="text-lg font-semibold text-white">{user ? `Welcome back, ${user.login}` : 'Welcome'}</h1>
+      <p class="text-xs text-gray-500 mt-0.5">{dateStr}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-400">
+        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        CNSA 2.0 deadline: {daysRemaining} days remaining
+      </span>
+    </div>
   </div>
 
-  <!-- Quick Actions -->
-  <div class="flex items-center gap-2 mb-5">
-    <a href="/dashboard/models" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
-      Sign Model
-    </a>
-    <a href="/dashboard/agents" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
-      Register Agent
-    </a>
-    <a href="/dashboard/migrate" class="inline-flex items-center gap-1.5 rounded-md bg-navy-700 border border-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-600 hover:text-white transition-colors">
-      Analyze Repo
-    </a>
-    <a href="/models" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
-      View Marketplace
-    </a>
-  </div>
-
-  <div class="grid grid-cols-1 gap-5 lg:grid-cols-4">
-    <!-- Recent Activity -->
-    <div class="lg:col-span-3 rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</h2>
+  <!-- Stats Row -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <a href="/dashboard/models" class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 hover:bg-navy-700 transition-all">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] text-gray-500 uppercase tracking-wider">Your Models</span>
+        <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-electric transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
       </div>
-      {activity.length > 0 ? (
-        <div class="divide-y divide-white/[0.03]">
-          {activity.map((entry: any, i: number) => (
-            <div class={`px-4 py-3 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-xs font-medium text-gray-300">{entry.action}</span>
-                <span class="text-[10px] text-gray-600">{entry.created_at ? timeAgo(entry.created_at) : ''}</span>
+      <p class="text-xl font-bold text-white font-mono">{stats.modelCount}</p>
+      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stats.modelCount > 0 ? 'View models' : 'Push your first model'} &rarr;</p>
+    </a>
+    <a href="/dashboard/agents" class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 hover:bg-navy-700 transition-all">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] text-gray-500 uppercase tracking-wider">Your Agents</span>
+        <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-electric transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+      </div>
+      <p class="text-xl font-bold text-white font-mono">{stats.agentCount}</p>
+      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stats.agentCount > 0 ? 'View agents' : 'Register an agent'} &rarr;</p>
+    </a>
+    <a href="/dashboard/models" class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 hover:bg-navy-700 transition-all">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] text-gray-500 uppercase tracking-wider">Verifications</span>
+        <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-electric transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+      </div>
+      <p class="text-xl font-bold text-white font-mono">{stats.verificationCount}</p>
+      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">View details &rarr;</p>
+    </a>
+    <div class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3" class:list={[hndlAlerts > 0 ? 'border-amber-500/20' : '']}>
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] text-gray-500 uppercase tracking-wider">HNDL Alerts</span>
+        <svg class={`h-3.5 w-3.5 ${hndlAlerts > 0 ? 'text-amber-400' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+      </div>
+      <p class={`text-xl font-bold font-mono ${hndlAlerts > 0 ? 'text-amber-400' : 'text-white'}`}>{hndlAlerts}</p>
+      <p class="text-[10px] text-gray-600 mt-0.5">{hndlAlerts > 0 ? `${hndlAlerts} HIGH+ risk` : 'No alerts'}</p>
+    </div>
+  </div>
+
+  <!-- Two Column Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- LEFT COLUMN (wider) -->
+    <div class="lg:col-span-2 space-y-5">
+
+      <!-- Quick Actions -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Actions</h2>
+        </div>
+        <div class="grid grid-cols-2 gap-px bg-white/[0.03]">
+          <a href="/docs/quickstart" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-electric/10 text-electric group-hover:bg-electric/20 transition-colors flex-shrink-0">
+                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
               </div>
-              {entry.target && <p class="text-[11px] text-gray-500 font-mono">{entry.target}</p>}
-              {entry.details && <p class="text-[10px] text-gray-600 mt-0.5">{entry.details}</p>}
+              <div>
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Push Model</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Sign and publish a model</p>
+              </div>
             </div>
-          ))}
+          </a>
+          <a href="/dashboard/agents" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-quantum/10 text-quantum group-hover:bg-quantum/20 transition-colors flex-shrink-0">
+                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Register Agent</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Create a PQC-authenticated agent</p>
+              </div>
+            </div>
+          </a>
+          <a href="/dashboard/migrate" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 transition-colors flex-shrink-0">
+                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Run Migration</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Analyze PQC migration readiness</p>
+              </div>
+            </div>
+          </a>
+          <a href="/models" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors flex-shrink-0">
+                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Browse Models</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Explore the model marketplace</p>
+              </div>
+            </div>
+          </a>
         </div>
-      ) : (
-        <div class="px-4 py-10 text-center">
-          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 mx-auto mb-3">
-            <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </div>
-          <p class="text-sm text-gray-400 mb-1">No activity yet</p>
-          <p class="text-xs text-gray-600 max-w-xs mx-auto">Start by signing a model or registering an agent. Your verification history will appear here.</p>
-          <div class="flex items-center justify-center gap-2 mt-4">
-            <a href="/dashboard/models" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-              Sign a Model
-            </a>
-            <a href="/dashboard/agents" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-              Register an Agent
-            </a>
-          </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your Recent Activity</h2>
+          {activity.length > 0 && (
+            <a href="/transparency" class="text-[10px] text-electric hover:underline">View all</a>
+          )}
         </div>
-      )}
+        {activity.length > 0 ? (
+          <div class="divide-y divide-white/[0.03]">
+            {activity.map((entry: any, i: number) => (
+              <div class={`flex items-center gap-3 px-4 py-3 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-electric/10 text-electric flex-shrink-0">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-gray-300 truncate">{entry.action}</span>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0 ml-2">{entry.created_at ? timeAgo(entry.created_at) : ''}</span>
+                  </div>
+                  {entry.target && <p class="text-[10px] text-gray-500 font-mono truncate mt-0.5">{entry.target}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="px-4 py-10 text-center">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 mx-auto mb-3">
+              <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <p class="text-sm text-gray-400 mb-1">No activity yet</p>
+            <p class="text-xs text-gray-600 max-w-xs mx-auto">Get started by pushing your first model or registering an agent.</p>
+            <div class="flex items-center justify-center gap-2 mt-4">
+              <a href="/docs/quickstart" class="inline-flex items-center gap-1.5 rounded-md bg-electric/10 border border-electric/20 px-2.5 py-1 text-xs font-medium text-electric hover:bg-electric/20 transition-colors">
+                Get Started
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <!-- PQC Migration Status -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">PQC Migration Status</h2>
+          {userModels.length > 0 && (
+            <a href="/dashboard/migrate" class="text-[10px] text-electric hover:underline">Run analysis</a>
+          )}
+        </div>
+        {userModels.length > 0 ? (
+          <div class="p-4">
+            <div class="grid grid-cols-3 gap-3">
+              {(() => {
+                const critical = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'CRITICAL').length;
+                const high = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'HIGH').length;
+                const medium = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'MEDIUM').length;
+                const low = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'LOW').length;
+                const unassessed = userModels.filter((m: any) => !m.risk_level).length;
+                return (
+                  <>
+                    <div class="rounded-lg border border-white/5 bg-navy-900 p-3 text-center">
+                      <p class="text-lg font-bold font-mono text-red-400">{critical}</p>
+                      <p class="text-[10px] text-gray-500 mt-0.5">Critical</p>
+                    </div>
+                    <div class="rounded-lg border border-white/5 bg-navy-900 p-3 text-center">
+                      <p class="text-lg font-bold font-mono text-orange-400">{high}</p>
+                      <p class="text-[10px] text-gray-500 mt-0.5">High</p>
+                    </div>
+                    <div class="rounded-lg border border-white/5 bg-navy-900 p-3 text-center">
+                      <p class="text-lg font-bold font-mono text-emerald-400">{low + medium}</p>
+                      <p class="text-[10px] text-gray-500 mt-0.5">Low/Medium</p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+            {(() => {
+              const unassessed = userModels.filter((m: any) => !m.risk_level).length;
+              return unassessed > 0 ? (
+                <p class="text-[10px] text-gray-500 mt-3">{unassessed} model{unassessed > 1 ? 's' : ''} not yet assessed. <a href="/dashboard/migrate" class="text-electric hover:underline">Run HNDL analysis</a></p>
+              ) : null;
+            })()}
+          </div>
+        ) : (
+          <div class="px-4 py-8 text-center">
+            <p class="text-xs text-gray-500">No models analyzed yet.</p>
+            <a href="/dashboard/migrate" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors mt-3">
+              Analyze Risk
+            </a>
+          </div>
+        )}
+      </div>
     </div>
 
-    <!-- HNDL Risk Distribution -->
-    <div class="rounded-lg border border-white/5 bg-navy-800">
-      <div class="px-4 py-2.5 border-b border-white/5">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your HNDL Risk</h2>
-      </div>
-      <div class="px-4 py-10 text-center">
-        <div class="relative h-20 w-20 mx-auto mb-3">
-          <svg class="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" stroke-width="5" class="text-white/5" />
-          </svg>
-          <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="text-lg font-bold text-gray-600 font-mono">--</span>
+    <!-- RIGHT COLUMN (narrower) -->
+    <div class="space-y-5">
+
+      <!-- Getting Started Checklist -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Getting Started</h2>
+        </div>
+        <div class="p-4 space-y-2.5">
+          {[
+            { done: true, label: 'Install CLI', detail: 'pip install quantumshield', href: '/docs/quickstart' },
+            { done: true, label: 'Authenticate', detail: 'quantumshield login', href: '/docs/quickstart' },
+            { done: hasAgents, label: 'Create signing identity', detail: 'Register a PQC agent', href: '/dashboard/agents' },
+            { done: hasModels, label: 'Push your first model', detail: 'Sign and publish a model', href: '/docs/quickstart' },
+            { done: hasVerifications, label: 'Verify a model', detail: 'Run verification on a model', href: '/models' },
+          ].map((item) => (
+            <a href={item.href} class="flex items-start gap-2.5 group">
+              <div class={`flex h-4.5 w-4.5 items-center justify-center rounded-full border mt-0.5 flex-shrink-0 ${item.done ? 'bg-emerald-500/20 border-emerald-500/30' : 'border-white/10 bg-white/5'}`}>
+                {item.done ? (
+                  <svg class="h-2.5 w-2.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                  <span class="h-1.5 w-1.5 rounded-full bg-gray-600" />
+                )}
+              </div>
+              <div>
+                <p class={`text-xs font-medium ${item.done ? 'text-gray-500 line-through' : 'text-gray-300 group-hover:text-white'} transition-colors`}>{item.label}</p>
+                <p class="text-[10px] text-gray-600 mt-0.5">{item.detail}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+        <div class="px-4 py-2.5 border-t border-white/5 bg-white/[0.01]">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-gray-500">{[true, true, hasAgents, hasModels, hasVerifications].filter(Boolean).length}/5 complete</span>
+            <div class="w-20 h-1 rounded-full bg-white/5 overflow-hidden">
+              <div class="h-full rounded-full bg-electric transition-all" style={`width: ${([true, true, hasAgents, hasModels, hasVerifications].filter(Boolean).length / 5) * 100}%`} />
+            </div>
           </div>
         </div>
-        <p class="text-xs text-gray-500">No models analyzed yet</p>
-        <a href="/dashboard/models" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors mt-3">
-          Analyze Risk
-        </a>
+      </div>
+
+      <!-- CNSA 2.0 Compliance -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">CNSA 2.0 Compliance</h2>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-gray-400">Timeline progress</span>
+            <span class="text-[10px] text-gray-500 font-mono">{cnsaProgress}%</span>
+          </div>
+          <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mb-3">
+            <div class={`h-full rounded-full transition-all ${cnsaProgress > 75 ? 'bg-amber-500' : 'bg-electric'}`} style={`width: ${cnsaProgress}%`} />
+          </div>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-lg font-bold text-white font-mono">{daysRemaining}</p>
+              <p class="text-[10px] text-gray-500">days remaining</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] text-gray-500">Deadline</p>
+              <p class="text-xs text-gray-400">Jan 1, 2027</p>
+            </div>
+          </div>
+          <a href="/dashboard/compliance" class="mt-3 flex items-center justify-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-3 py-1.5 text-[10px] font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors w-full">
+            Check Compliance Status
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- Transparency Log -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Transparency Log</h2>
+          <a href="/transparency" class="text-[10px] text-electric hover:underline">View Full Log</a>
+        </div>
+        {activity.length > 0 ? (
+          <div class="divide-y divide-white/[0.03]">
+            {activity.slice(0, 3).map((entry: any) => (
+              <div class="px-4 py-2.5">
+                <p class="text-[11px] text-gray-300 truncate">{entry.action}</p>
+                {entry.target && <p class="text-[10px] text-gray-600 font-mono truncate mt-0.5">{entry.target}</p>}
+                <p class="text-[10px] text-gray-600 mt-0.5">{entry.created_at ? timeAgo(entry.created_at) : ''}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="px-4 py-6 text-center">
+            <p class="text-[11px] text-gray-600">No log entries yet.</p>
+          </div>
+        )}
+      </div>
+
+      <!-- Resources -->
+      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Resources</h2>
+        </div>
+        <div class="p-3 space-y-1">
+          <a href="/docs" class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+            <div>
+              <p class="text-xs text-gray-300 group-hover:text-white transition-colors">Documentation</p>
+              <p class="text-[10px] text-gray-600">Guides and reference</p>
+            </div>
+          </a>
+          <a href="/docs/quickstart" class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <div>
+              <p class="text-xs text-gray-300 group-hover:text-white transition-colors">CLI Quickstart</p>
+              <p class="text-[10px] text-gray-600">Install and configure</p>
+            </div>
+          </a>
+          <a href="/docs/api" class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+            <div>
+              <p class="text-xs text-gray-300 group-hover:text-white transition-colors">API Reference</p>
+              <p class="text-[10px] text-gray-600">REST endpoints and schemas</p>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
   </div>
