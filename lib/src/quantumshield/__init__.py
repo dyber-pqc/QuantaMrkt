@@ -3,6 +3,7 @@
 __version__ = "0.1.0"
 
 from quantumshield.core.algorithms import KEMAlgorithm, SignatureAlgorithm
+from quantumshield.core.keys import has_pqc
 from quantumshield.identity.agent import AgentIdentity
 from quantumshield.migrator.analyzer import MigrationAgent
 from quantumshield.registry.manifest import ModelManifest
@@ -13,4 +14,5 @@ __all__ = [
     "MigrationAgent",
     "SignatureAlgorithm",
     "KEMAlgorithm",
+    "has_pqc",
 ]

@@ -6,6 +6,7 @@ from quantumshield.core.keys import (
     SigningKeypair,
     generate_kem_keypair,
     generate_signing_keypair,
+    has_pqc,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "KEMKeypair",
     "generate_signing_keypair",
     "generate_kem_keypair",
+    "has_pqc",
 ]
