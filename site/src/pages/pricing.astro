@@ -72,7 +72,7 @@ import { PRICING_TIERS } from '../lib/constants';
             </ul>
 
             <a
-              href={tier.name === 'Enterprise' ? '/contact' : '/dashboard'}
+              href={tier.name === 'Enterprise' ? 'mailto:sales@quantamrkt.com' : tier.name === 'Free' ? '/api/auth/login' : '/api/auth/login'}
               class:list={[
                 'w-full text-center py-3 rounded-lg font-semibold text-sm transition-colors duration-200',
                 tier.highlighted
@@ -153,7 +153,7 @@ import { PRICING_TIERS } from '../lib/constants';
           <p class="text-gray-400 text-lg max-w-xl mx-auto mb-8">
             On-premises deployment, custom integrations, and dedicated support for enterprise teams.
           </p>
-          <a href="/contact" class="btn-primary text-base px-8 py-3.5">
+          <a href="mailto:sales@quantamrkt.com" class="btn-primary text-base px-8 py-3.5">
             Contact Sales
           </a>
         </div>

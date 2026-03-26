@@ -3,7 +3,15 @@ import MarketingLayout from '../../layouts/MarketingLayout.astro';
 import { getAgents } from '../../lib/db';
 
 const db = (Astro.locals as any).runtime?.env?.DB;
-const agents: any[] = db ? await getAgents(db) : [];
+const q = (Astro.url.searchParams.get('q') || '').toLowerCase();
+const allAgents: any[] = db ? await getAgents(db) : [];
+const agents = q
+  ? allAgents.filter((a: any) =>
+      (a.name || '').toLowerCase().includes(q) ||
+      (a.did || '').toLowerCase().includes(q) ||
+      (a.algorithm || '').toLowerCase().includes(q)
+    )
+  : allAgents;
 
 function parseCapabilities(json: string | null): string[] {
   if (!json) return [];
@@ -32,16 +40,20 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
 
     <!-- Search -->
     <div class="max-w-lg mx-auto mb-8">
-      <div class="relative">
-        <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search agents by name, org, or DID..."
-          class="w-full rounded-xl border border-white/10 bg-navy-800 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
-        />
-      </div>
+      <form method="GET" action="/agents">
+        <div class="relative">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            name="q"
+            value={Astro.url.searchParams.get('q') || ''}
+            placeholder="Search agents by name, org, or DID..."
+            class="w-full rounded-xl border border-white/10 bg-navy-800 pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+          />
+        </div>
+      </form>
     </div>
 
     <!-- Stats bar -->
@@ -81,10 +93,10 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
             {agents.map((agent: any, i: number) => {
               const caps = parseCapabilities(agent.capabilities_json);
               return (
-                <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`} onclick={`window.location='/agents/${agent.id}'`}>
                   <td class="px-5 py-3">
                     <div>
-                      <p class="text-sm font-medium text-gray-200">{agent.name}</p>
+                      <a href={`/agents/${agent.id}`} class="text-sm font-medium text-gray-200 hover:text-white">{agent.name}</a>
                       <p class="text-xs text-gray-500">{agent.created_at?.slice(0, 10)}</p>
                     </div>
                   </td>

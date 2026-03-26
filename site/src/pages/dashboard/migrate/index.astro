@@ -33,15 +33,20 @@ const reports = [
     status: 'In Progress',
   },
 ];
+const scannedUrl = Astro.url.searchParams.get('repo') || '';
+const justSubmitted = !!scannedUrl;
 ---
 
 <DashboardLayout title="Migration Hub">
   <!-- Compact URL Input -->
   <div class="rounded-lg border border-white/5 bg-navy-800 p-4 mb-5">
-    <form class="flex items-center gap-2">
+    <form method="GET" action="/dashboard/migrate" class="flex items-center gap-2">
       <input
         type="url"
+        name="repo"
+        value={scannedUrl}
         placeholder="https://github.com/org/repo"
+        required
         class="flex-1 rounded-md border border-white/10 bg-navy-900 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50 font-mono"
       />
       <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors whitespace-nowrap">
@@ -50,6 +55,13 @@ const reports = [
     </form>
     <p class="text-[11px] text-gray-600 mt-1.5">Paste a GitHub repository URL to scan for quantum-vulnerable cryptography</p>
   </div>
+
+  {justSubmitted && (
+    <div class="rounded-lg border border-quantum/20 bg-quantum/[0.04] px-4 py-3 mb-5 flex items-center gap-2">
+      <svg class="h-4 w-4 text-quantum flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+      <p class="text-xs text-quantum">Migration analysis started for <span class="font-mono">{scannedUrl}</span>. Results will appear below.</p>
+    </div>
+  )}
 
   <!-- Recent Reports -->
   <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">

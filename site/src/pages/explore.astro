@@ -97,14 +97,14 @@ function timeAgo(dateStr: string): string {
           {recent.length > 0 ? (
             <div class="divide-y divide-white/[0.03]">
               {recent.map((event: any, i: number) => (
-                <div class={`px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <a href={`/models/${event.model_slug || encodeURIComponent((event.model_author || '') + '-' + (event.model_name || ''))}`} class={`block px-4 py-2.5 hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
                   <div class="flex items-center justify-between mb-0.5">
                     <span class="text-[11px] text-gray-500">{event.signed_at ? timeAgo(event.signed_at) : ''}</span>
                     <span class="font-mono text-[10px] text-gray-600">{event.algorithm}</span>
                   </div>
                   <p class="text-xs text-gray-300 font-mono truncate">{event.model_author}/{event.model_name}</p>
                   <p class="text-[10px] text-gray-600 font-mono truncate">{event.signer}</p>
-                </div>
+                </a>
               ))}
             </div>
           ) : (
@@ -133,10 +133,10 @@ function timeAgo(dateStr: string): string {
               </thead>
               <tbody>
                 {leaderboard.map((item: any, i: number) => (
-                  <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <tr class={`border-b border-white/[0.03] hover:bg-white/[0.03] transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`} onclick={`window.location='/models/${item.slug || ''}'`}>
                     <td class="px-4 py-2 text-gray-600 font-mono">{i + 1}</td>
                     <td class="px-4 py-2">
-                      <p class="text-gray-200 font-medium">{item.name}</p>
+                      <a href={`/models/${item.slug || ''}`} class="text-gray-200 font-medium hover:text-white">{item.name}</a>
                       <p class="text-[10px] text-gray-500">{item.author}</p>
                     </td>
                     <td class="px-4 py-2 text-center">

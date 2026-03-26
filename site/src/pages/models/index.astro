@@ -7,10 +7,13 @@ const q = Astro.url.searchParams.get('q') || '';
 const sort = Astro.url.searchParams.get('sort') || 'downloads';
 const risk = Astro.url.searchParams.get('risk') || '';
 
+const page = parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const offset = (page - 1) * 20;
+
 let models: any[] = [];
 let total = 0;
 if (db) {
-  const result = await getModels(db, { q, sort, risk: risk.toUpperCase() || undefined, limit: 20 });
+  const result = await getModels(db, { q, sort, risk: risk.toUpperCase() || undefined, limit: 20, offset });
   models = result.models;
   total = result.total;
 }
@@ -190,8 +193,28 @@ function buildUrl(params: Record<string, string>): string {
     )}
 
     <!-- Pagination -->
-    <div class="flex items-center justify-between mt-6 text-xs text-gray-500">
-      <span>Showing {models.length} of {total} models</span>
-    </div>
+    {(() => {
+      const page = parseInt(Astro.url.searchParams.get('page') || '1', 10);
+      const totalPages = Math.ceil(total / 20);
+      const hasPrev = page > 1;
+      const hasNext = page < totalPages;
+      return (
+        <div class="flex items-center justify-between mt-6 text-xs text-gray-500">
+          <span>Showing {models.length} of {total} models (page {page} of {totalPages || 1})</span>
+          <div class="flex items-center gap-2">
+            {hasPrev ? (
+              <a href={buildUrl({ page: String(page - 1), sort, q, risk })} class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors">Prev</a>
+            ) : (
+              <span class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-600 cursor-not-allowed">Prev</span>
+            )}
+            {hasNext ? (
+              <a href={buildUrl({ page: String(page + 1), sort, q, risk })} class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors">Next</a>
+            ) : (
+              <span class="rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-600 cursor-not-allowed">Next</span>
+            )}
+          </div>
+        </div>
+      );
+    })()}
   </div>
 </MarketingLayout>

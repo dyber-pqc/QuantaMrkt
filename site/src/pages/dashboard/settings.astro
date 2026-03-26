@@ -85,8 +85,8 @@ const isFreeTier = tierLabel === 'free';
     <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
       <div class="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
         <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">API Keys</h2>
-        <button class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
-          New Key
+        <button id="rotate-key-btn" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+          Rotate Key
         </button>
       </div>
       <div class="p-4">
@@ -146,7 +146,7 @@ const isFreeTier = tierLabel === 'free';
       <div class="px-4 py-10 text-center">
         <p class="text-xs text-gray-500 mb-1">No PQC identity generated yet</p>
         <p class="text-[11px] text-gray-600 mb-3">Generate a DID-based PQC keypair for signing models and agent credentials</p>
-        <button class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
+        <button id="generate-identity-btn" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
           Generate Identity
         </button>
       </div>
@@ -170,6 +170,7 @@ const isFreeTier = tierLabel === 'free';
   </div>
 
   <script>
+    // Copy API Key
     const btn = document.getElementById('copy-key-btn');
     const keyEl = document.getElementById('api-key');
     if (btn && keyEl) {
@@ -179,6 +180,42 @@ const isFreeTier = tierLabel === 'free';
         setTimeout(() => {
           btn.innerHTML = '<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
         }, 2000);
+      });
+    }
+
+    // Rotate Key
+    const rotateBtn = document.getElementById('rotate-key-btn');
+    if (rotateBtn) {
+      rotateBtn.addEventListener('click', () => {
+        alert('Key rotation coming soon.');
+      });
+    }
+
+    // Generate Identity
+    const genBtn = document.getElementById('generate-identity-btn');
+    if (genBtn) {
+      genBtn.addEventListener('click', async () => {
+        genBtn.textContent = 'Generating...';
+        (genBtn as HTMLButtonElement).disabled = true;
+        try {
+          const res = await fetch('/api/agents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'default-identity', algorithm: 'ML-DSA-65', capabilities: 'sign,verify' }),
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'Failed to generate identity. Please try again.');
+            genBtn.textContent = 'Generate Identity';
+            (genBtn as HTMLButtonElement).disabled = false;
+          }
+        } catch {
+          alert('Network error. Please try again.');
+          genBtn.textContent = 'Generate Identity';
+          (genBtn as HTMLButtonElement).disabled = false;
+        }
       });
     }
   </script>

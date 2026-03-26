@@ -49,15 +49,13 @@ const completed = checklist.filter(i => i.checked).length;
       </div>
       <div class="divide-y divide-white/[0.03]">
         {checklist.map((item, i) => (
-          <div class={`flex items-center gap-3 px-4 py-3 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-            <div class={`flex h-4 w-4 items-center justify-center rounded flex-shrink-0 ${
+          <div class={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors compliance-item ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`} data-checked={item.checked ? 'true' : 'false'}>
+            <div class={`compliance-box flex h-4 w-4 items-center justify-center rounded flex-shrink-0 ${
               item.checked ? 'bg-quantum/20' : 'border border-white/15'
             }`}>
-              {item.checked && (
-                <svg class="h-2.5 w-2.5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
+              <svg class={`compliance-check h-2.5 w-2.5 text-quantum ${item.checked ? '' : 'hidden'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
             <span class={`text-sm ${item.checked ? 'text-gray-300' : 'text-gray-500'}`}>
               {item.label}
@@ -96,4 +94,24 @@ const completed = checklist.filter(i => i.checked).length;
       </div>
     </div>
   </div>
+<script>
+  document.querySelectorAll('.compliance-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const el = item as HTMLElement;
+      const isChecked = el.dataset.checked === 'true';
+      el.dataset.checked = isChecked ? 'false' : 'true';
+      const box = el.querySelector('.compliance-box') as HTMLElement;
+      const check = el.querySelector('.compliance-check') as HTMLElement;
+      if (!isChecked) {
+        box.classList.remove('border', 'border-white/15');
+        box.classList.add('bg-quantum/20');
+        check.classList.remove('hidden');
+      } else {
+        box.classList.add('border', 'border-white/15');
+        box.classList.remove('bg-quantum/20');
+        check.classList.add('hidden');
+      }
+    });
+  });
+</script>
 </DashboardLayout>
