@@ -237,10 +237,34 @@ export const GET: APIRoute = async ({ params, locals }) => {
       }
     }
 
+    // Separate PQC signatures from regular signatures
+    const pqcSignatures = model.signatures.filter(
+      (s) => s.attestation_type === 'pqc_registry',
+    );
+    const regularSignatures = model.signatures.filter(
+      (s) => s.attestation_type !== 'pqc_registry',
+    );
+
+    const pqcVerified = pqcSignatures.length > 0;
+
     return json({
       verified,
+      pqc_verified: pqcVerified,
+      verification_level: pqcVerified
+        ? 'pqc'
+        : verified
+          ? 'registry'
+          : 'none',
       model: model.hf_repo_id || `${model.author}/${model.name}`,
-      signatures: model.signatures.map((s) => ({
+      pqc_signatures: pqcSignatures.map((s) => ({
+        signer_did: s.signer_did,
+        algorithm: s.algorithm,
+        attestation_type: s.attestation_type,
+        signature_hex: s.signature_hex,
+        signed_at: s.signed_at,
+        public_key_url: '/.well-known/pqc-public-key',
+      })),
+      signatures: regularSignatures.map((s) => ({
         signer_did: s.signer_did,
         algorithm: s.algorithm,
         attestation_type: s.attestation_type,

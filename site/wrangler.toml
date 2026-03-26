@@ -17,6 +17,9 @@ directory = "./dist"
 [vars]
 PUBLIC_SITE_URL = "https://quantamrkt.com"
 GITHUB_CLIENT_ID = "Ov23liuaDLn9Xtgh2uCO"
+# ML-DSA-87 platform public key (safe to commit — this is PUBLIC).
+# Set to the real value after the first GitHub Actions signing run.
+PLATFORM_ML_DSA_PUBLIC_KEY = "NOT_YET_CONFIGURED"
 
 [[d1_databases]]
 binding = "DB"

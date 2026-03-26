@@ -1,0 +1,44 @@
+name: PQC Sign Models
+
+on:
+  schedule:
+    - cron: '30 */6 * * *'   # Every 6 hours at :30
+  workflow_dispatch:           # Manual trigger
+
+jobs:
+  sign:
+    name: Sign models with ML-DSA-87
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install liboqs (C library)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libssl-dev
+          git clone --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+          cd /tmp/liboqs
+          mkdir build && cd build
+          cmake -GNinja -DBUILD_SHARED_LIBS=ON ..
+          ninja
+          sudo ninja install
+          sudo ldconfig
+
+      - name: Install Python dependencies
+        run: |
+          pip install liboqs-python httpx
+          cd lib && pip install -e .
+
+      - name: Sign all models
+        env:
+          QUANTAMRKT_API_URL: https://quantamrkt.com
+          QUANTAMRKT_API_TOKEN: ${{ secrets.QUANTAMRKT_API_TOKEN }}
+          PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
+          PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
+        run: |
+          python -m quantumshield.signing_service --sign-all

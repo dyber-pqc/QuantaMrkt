@@ -17,6 +17,13 @@ const shelfLife = model.hndl?.shelf_life_years ? `${model.hndl.shelf_life_years}
 const recommendation = model.hndl?.recommendation || '';
 const algorithm = model.signatures?.[0]?.algorithm || '';
 
+// PQC signature detection
+const pqcSignatures = model.signatures?.filter((s: any) => s.attestation_type === 'pqc_registry') || [];
+const regularSignatures = model.signatures?.filter((s: any) => s.attestation_type !== 'pqc_registry') || [];
+const hasPqcSignature = pqcSignatures.length > 0;
+const pqcAlgorithm = pqcSignatures[0]?.algorithm || '';
+const pqcSignerDid = pqcSignatures[0]?.signer_did || '';
+
 function riskBadgeClass(level: string): string {
   switch (level.toUpperCase()) {
     case 'CRITICAL': return 'text-red-400 bg-red-500/10 border-red-500/20';
@@ -160,15 +167,22 @@ const uniqueSigners = [...new Set(model.signatures.map((s: any) => s.signer_did)
                 <span class="text-gray-600 mx-0.5">/</span>
                 <span>{model.name}</span>
               </h1>
-              {model.verified ? (
-                <span class="inline-flex items-center gap-1 rounded-full bg-quantum/10 border border-quantum/20 px-2.5 py-0.5 text-[11px] font-medium text-quantum">
+              {hasPqcSignature ? (
+                <a href="/pqc-key" class="inline-flex items-center gap-1 rounded-full bg-quantum/10 border border-quantum/20 px-2.5 py-0.5 text-[11px] font-medium text-quantum hover:bg-quantum/20 transition-colors" title={`Signed with ${pqcAlgorithm} by ${pqcSignerDid}`}>
                   <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                   </svg>
                   PQC Verified
+                </a>
+              ) : model.verified ? (
+                <span class="inline-flex items-center gap-1 rounded-full bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 text-[11px] font-medium text-blue-400">
+                  <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                  Registry Verified
                 </span>
               ) : (
-                <span class="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-0.5 text-[11px] font-medium text-yellow-400">
+                <span class="inline-flex items-center gap-1 rounded-full bg-gray-500/10 border border-gray-500/20 px-2.5 py-0.5 text-[11px] font-medium text-gray-400">
                   Unverified
                 </span>
               )}
@@ -304,26 +318,48 @@ const uniqueSigners = [...new Set(model.signatures.map((s: any) => s.signer_did)
         <!-- ===== OVERVIEW TAB ===== -->
         <div id="tab-overview" class="tab-panel space-y-6">
           <!-- PQC Verification Banner -->
-          {model.verified ? (
+          {hasPqcSignature ? (
             <div class="rounded-xl border border-quantum/20 bg-quantum/[0.04] px-5 py-4">
               <div class="flex items-start gap-3">
                 <svg class="h-5 w-5 text-quantum flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                 </svg>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-quantum mb-1">PQC-Verified with {pqcAlgorithm}</p>
+                  <p class="text-xs text-gray-400 mb-2">
+                    This model has a real FIPS 204 ML-DSA-87 (Dilithium5) signature from the platform signing authority.
+                    Signature chain includes {model.signatures.length} verification(s). Last verified {model.updated_at?.slice(0, 10) || 'N/A'}.
+                  </p>
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-quantum/10 px-2 py-0.5 text-[10px] font-mono text-quantum">
+                      {pqcAlgorithm}
+                    </span>
+                    <span class="text-[10px] text-gray-600">Signer: <span class="font-mono text-gray-500">{pqcSignerDid}</span></span>
+                    <a href="/pqc-key" class="text-[10px] text-electric hover:underline">View public key</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : model.verified ? (
+            <div class="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] px-5 py-4">
+              <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
                 <div>
-                  <p class="text-sm font-semibold text-quantum mb-1">PQC-Verified{algorithm ? ` with ${algorithm}` : ''}</p>
-                  <p class="text-xs text-gray-400">All file hashes match the source. Signature chain includes {model.signatures.length} verification(s). Last verified {model.updated_at?.slice(0, 10) || 'N/A'}.</p>
+                  <p class="text-sm font-semibold text-blue-400 mb-1">Registry Verified{algorithm ? ` with ${algorithm}` : ''}</p>
+                  <p class="text-xs text-gray-400">This model has registry-level signatures but has not yet been signed with ML-DSA-87. Signature chain includes {model.signatures.length} verification(s).</p>
                 </div>
               </div>
             </div>
           ) : (
-            <div class="rounded-xl border border-yellow-500/20 bg-yellow-500/[0.04] px-5 py-4">
+            <div class="rounded-xl border border-gray-500/20 bg-gray-500/[0.04] px-5 py-4">
               <div class="flex items-start gap-3">
-                <svg class="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 <div>
-                  <p class="text-sm font-semibold text-yellow-400 mb-1">Unverified Model</p>
+                  <p class="text-sm font-semibold text-gray-400 mb-1">Unverified Model</p>
                   <p class="text-xs text-gray-400">This model has not been PQC-verified. File integrity cannot be guaranteed against quantum threats.</p>
                 </div>
               </div>
@@ -491,28 +527,94 @@ quantumshield verify {model.author}/{model.name}</pre>
 
         <!-- ===== SIGNATURES TAB ===== -->
         <div id="tab-signatures" class="tab-panel hidden">
+
+          {/* PQC Signatures Section */}
+          {pqcSignatures.length > 0 && (
+            <div class="rounded-xl border border-quantum/20 bg-navy-800 overflow-hidden mb-6">
+              <div class="px-5 py-3 border-b border-quantum/20 flex items-center justify-between bg-quantum/[0.04]">
+                <div class="flex items-center gap-2">
+                  <svg class="h-4 w-4 text-quantum" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                  <h2 class="text-sm font-semibold text-quantum">ML-DSA-87 PQC Signatures</h2>
+                </div>
+                <span class="text-xs text-quantum/60">{pqcSignatures.length} PQC signature(s)</span>
+              </div>
+              <div class="p-5">
+                <div class="space-y-0">
+                  {pqcSignatures.map((sig: any, i: number) => (
+                    <div class="flex items-start gap-4">
+                      <div class="flex flex-col items-center">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-quantum bg-quantum/10">
+                          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        {i < pqcSignatures.length - 1 && (
+                          <div class="w-px h-full min-h-[40px] bg-quantum/20 my-1" />
+                        )}
+                      </div>
+                      <div class={`flex-1 rounded-lg border border-quantum/10 bg-navy-900 p-4 ${i < pqcSignatures.length - 1 ? 'mb-3' : ''}`}>
+                        <div class="flex items-center gap-2 flex-wrap mb-2">
+                          <span class="text-xs font-semibold text-quantum">PQC Platform Signature</span>
+                          <span class="inline-flex rounded-full bg-quantum/10 border border-quantum/20 px-2 py-0.5 font-mono text-[10px] text-quantum">{sig.algorithm}</span>
+                          <span class="inline-flex items-center gap-1 text-[10px] text-quantum">
+                            <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                            FIPS 204 Verified
+                          </span>
+                          <span class="text-[10px] text-gray-600 ml-auto">{sig.signed_at ? new Date(sig.signed_at).toLocaleString() : ''}</span>
+                        </div>
+                        <div class="space-y-1.5">
+                          <div class="flex items-start gap-2">
+                            <span class="text-[10px] text-gray-600 w-16 flex-shrink-0 pt-0.5">Algorithm</span>
+                            <span class="font-mono text-[11px] text-gray-300">FIPS 204 ML-DSA-87 (Dilithium5)</span>
+                          </div>
+                          <div class="flex items-start gap-2">
+                            <span class="text-[10px] text-gray-600 w-16 flex-shrink-0 pt-0.5">Signer</span>
+                            <span class="font-mono text-[11px] text-gray-400 break-all">{sig.signer_did}</span>
+                          </div>
+                          <div class="flex items-start gap-2">
+                            <span class="text-[10px] text-gray-600 w-16 flex-shrink-0 pt-0.5">Public Key</span>
+                            <a href="/pqc-key" class="text-[11px] text-electric hover:underline">/.well-known/pqc-public-key</a>
+                          </div>
+                          <details class="group">
+                            <summary class="text-[10px] text-electric cursor-pointer hover:underline">Show full ML-DSA-87 signature</summary>
+                            <div class="mt-2 rounded bg-black/30 p-2.5 overflow-x-auto">
+                              <code class="font-mono text-[10px] text-gray-500 break-all">{sig.signature_hex}</code>
+                            </div>
+                          </details>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Regular Signatures Section */}
           <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
             <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 <h2 class="text-sm font-semibold text-gray-300">Signature Chain</h2>
               </div>
-              <span class="text-xs text-gray-600">{model.signatures.length} signature(s)</span>
+              <span class="text-xs text-gray-600">{regularSignatures.length} signature(s)</span>
             </div>
             <div class="p-5">
-              {model.signatures.length > 0 ? (
+              {regularSignatures.length > 0 ? (
                 <div class="space-y-0">
-                  {model.signatures.map((sig: any, i: number) => (
+                  {regularSignatures.map((sig: any, i: number) => (
                     <div class="flex items-start gap-4">
                       <div class="flex flex-col items-center">
                         <div class={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${sigRoleIcon(sig.attestation_type)}`}>
                           {i + 1}
                         </div>
-                        {i < model.signatures.length - 1 && (
+                        {i < regularSignatures.length - 1 && (
                           <div class="w-px h-full min-h-[40px] bg-white/10 my-1" />
                         )}
                       </div>
-                      <div class={`flex-1 rounded-lg border border-white/5 bg-navy-900 p-4 ${i < model.signatures.length - 1 ? 'mb-3' : ''}`}>
+                      <div class={`flex-1 rounded-lg border border-white/5 bg-navy-900 p-4 ${i < regularSignatures.length - 1 ? 'mb-3' : ''}`}>
                         <div class="flex items-center gap-2 flex-wrap mb-2">
                           <span class="text-xs font-semibold text-gray-200">{sigRoleLabel(sig.attestation_type)}</span>
                           <span class="inline-flex rounded-full bg-white/5 px-2 py-0.5 font-mono text-[10px] text-gray-500">{sig.algorithm}</span>
@@ -543,7 +645,7 @@ quantumshield verify {model.author}/{model.name}</pre>
               ) : (
                 <div class="text-center py-8">
                   <svg class="h-8 w-8 text-gray-700 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                  <p class="text-xs text-gray-600">No signatures recorded.</p>
+                  <p class="text-xs text-gray-600">No additional signatures recorded.</p>
                 </div>
               )}
             </div>

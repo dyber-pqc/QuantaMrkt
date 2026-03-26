@@ -1,0 +1,192 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const env = (Astro.locals as any).runtime?.env ?? {};
+const publicKeyHex: string = env.PLATFORM_ML_DSA_PUBLIC_KEY || 'NOT_YET_CONFIGURED';
+const keyConfigured = publicKeyHex !== 'NOT_YET_CONFIGURED' && publicKeyHex.length > 64;
+const truncatedKey = keyConfigured
+  ? `${publicKeyHex.slice(0, 64)}...${publicKeyHex.slice(-64)}`
+  : publicKeyHex;
+---
+
+<MarketingLayout title="Platform PQC Public Key" description="ML-DSA-87 public key for independent verification of all QuantaMrkt model signatures.">
+  <div class="mx-auto max-w-4xl px-6 py-16">
+
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <div class="inline-flex items-center gap-2 rounded-full bg-quantum/10 border border-quantum/20 px-4 py-1.5 text-xs font-medium text-quantum mb-6">
+        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        FIPS 204 ML-DSA-87
+      </div>
+      <h1 class="text-3xl font-bold text-white mb-3">Platform PQC Public Key</h1>
+      <p class="text-gray-400 text-sm max-w-xl mx-auto">
+        Anyone can use this key to independently verify every PQC signature in the QuantaMrkt registry.
+        This is our ML-DSA-87 (Dilithium5) signing key, compliant with FIPS 204.
+      </p>
+    </div>
+
+    <!-- Key Card -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden mb-8">
+      <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-quantum/10">
+            <svg class="h-5 w-5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-white">ML-DSA-87 Public Key</h2>
+            <p class="text-[11px] text-gray-500">FIPS 204 / Dilithium5</p>
+          </div>
+        </div>
+        {keyConfigured && (
+          <button
+            id="copy-key-btn"
+            data-key={publicKeyHex}
+            class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            Copy Full Key
+          </button>
+        )}
+      </div>
+      <div class="p-6">
+        {keyConfigured ? (
+          <div>
+            <div class="rounded-lg bg-navy-900 border border-white/5 p-4 mb-4">
+              <code class="font-mono text-[11px] text-gray-400 break-all leading-relaxed">
+                {truncatedKey}
+              </code>
+            </div>
+            <div class="text-[11px] text-gray-600">
+              Full key: {publicKeyHex.length / 2} bytes ({publicKeyHex.length} hex characters)
+            </div>
+          </div>
+        ) : (
+          <div class="text-center py-6">
+            <p class="text-sm text-yellow-400 mb-2">Key not yet configured</p>
+            <p class="text-xs text-gray-500">The platform signing key will be published after the first GitHub Actions signing run.</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+      <!-- Algorithm Details -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <h3 class="text-sm font-semibold text-gray-300 mb-4">Algorithm Details</h3>
+        <table class="w-full text-xs">
+          <tbody>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4 text-gray-500 font-medium">Algorithm</td>
+              <td class="py-2 text-gray-300 font-mono">ML-DSA-87</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4 text-gray-500 font-medium">NIST Standard</td>
+              <td class="py-2 text-gray-300">FIPS 204</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4 text-gray-500 font-medium">Implementation</td>
+              <td class="py-2 text-gray-300">Dilithium5 (liboqs)</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4 text-gray-500 font-medium">Security Level</td>
+              <td class="py-2 text-gray-300">NIST Level 5 (256-bit quantum)</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="py-2 pr-4 text-gray-500 font-medium">Signer DID</td>
+              <td class="py-2 text-gray-300 font-mono text-[10px]">did:web:quantamrkt.com:chain:authority</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 text-gray-500 font-medium">Usage</td>
+              <td class="py-2 text-gray-300">Platform model signing and chain block signatures</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- How Verification Works -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <h3 class="text-sm font-semibold text-gray-300 mb-4">How Verification Works</h3>
+        <ol class="space-y-3 text-xs text-gray-400">
+          <li class="flex items-start gap-2">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/10 text-electric text-[10px] font-bold flex-shrink-0">1</span>
+            <span>The signing service computes a <strong class="text-gray-300">SHA3-256 hash</strong> of the canonical model manifest (slug + file hashes + version).</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/10 text-electric text-[10px] font-bold flex-shrink-0">2</span>
+            <span>The hash is signed with <strong class="text-gray-300">ML-DSA-87</strong> using the platform's private key (stored as a GitHub secret).</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/10 text-electric text-[10px] font-bold flex-shrink-0">3</span>
+            <span>The signature and message hash are pushed to the QuantaMrkt API and recorded in the transparency log.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-electric/10 text-electric text-[10px] font-bold flex-shrink-0">4</span>
+            <span>Anyone can fetch this public key and the signature, recompute the manifest hash, and verify the ML-DSA-87 signature independently.</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- CLI Verification -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 p-5 mb-8">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">Verify with the CLI</h3>
+      <div class="space-y-3">
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-4 group relative">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Verify a model's PQC signature</p>
+          <code class="text-xs font-mono text-quantum break-all">quantumshield verify --pqc &lt;model_slug&gt;</code>
+          <button data-copy="quantumshield verify --pqc <model_slug>" class="absolute top-3 right-3 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-4 group relative">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Verify with an explicit public key</p>
+          <code class="text-xs font-mono text-electric break-all">quantumshield verify --key &lt;public_key_hex&gt; &lt;model_slug&gt;</code>
+          <button data-copy="quantumshield verify --key <public_key_hex> <model_slug>" class="absolute top-3 right-3 rounded border border-white/10 bg-white/5 px-1.5 py-1 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- JSON Endpoint Link -->
+    <div class="text-center">
+      <a href="/.well-known/pqc-public-key" class="inline-flex items-center gap-2 rounded-lg border border-quantum/30 bg-quantum/10 px-5 py-2.5 text-sm font-medium text-quantum hover:bg-quantum/20 transition-colors">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+        View JSON endpoint: /.well-known/pqc-public-key
+      </a>
+      <p class="text-[11px] text-gray-600 mt-3">Machine-readable public key for automated verification pipelines</p>
+    </div>
+
+  </div>
+
+  <!-- Copy button script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Copy full key button
+      const copyKeyBtn = document.getElementById('copy-key-btn');
+      if (copyKeyBtn) {
+        copyKeyBtn.addEventListener('click', () => {
+          const key = copyKeyBtn.getAttribute('data-key') || '';
+          navigator.clipboard.writeText(key).then(() => {
+            const original = copyKeyBtn.textContent;
+            copyKeyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyKeyBtn.textContent = original; }, 2000);
+          });
+        });
+      }
+
+      // Generic copy buttons
+      document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const text = btn.getAttribute('data-copy') || '';
+          navigator.clipboard.writeText(text).then(() => {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = original; }, 2000);
+          });
+        });
+      });
+    });
+  </script>
+</MarketingLayout>
