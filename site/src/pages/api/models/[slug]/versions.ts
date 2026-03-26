@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getModelBySlug, createVersion, logActivity } from '../../../../lib/db';
 import { getApiUser } from '../../../../lib/api-auth';
+import { appendLogEntry } from '../../../../lib/transparency';
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
   try {
@@ -64,6 +65,27 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
       target: `${slug}@${version}`,
       details: `Published version ${version} for ${model.name}`,
     });
+
+    // Append to transparency log: manifest push
+    await appendLogEntry(db, {
+      action: 'manifest:pushed',
+      target_type: 'manifest',
+      target_id: `${slug}@${version}`,
+      metadata: { manifestHash, fileCount: (files || []).length },
+    });
+
+    // Log each signature
+    if (signatures && signatures.length > 0) {
+      for (const sig of signatures) {
+        await appendLogEntry(db, {
+          action: 'model:signed',
+          actor_did: sig.signerDid,
+          target_type: 'model',
+          target_id: slug,
+          metadata: { version, algorithm: sig.algorithm, attestationType: sig.attestationType || null },
+        });
+      }
+    }
 
     return new Response(JSON.stringify(versionRecord), {
       status: 201,

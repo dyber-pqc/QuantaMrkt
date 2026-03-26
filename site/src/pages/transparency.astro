@@ -1,0 +1,557 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getLogEntries, verifyChain, getLatestEntry } from '../lib/transparency';
+
+const db = (Astro.locals as any).runtime?.env?.DB;
+
+let entries: any[] = [];
+let total = 0;
+let chainValid = true;
+let latestSeq = 0;
+let latestHash = '';
+let recentThree: any[] = [];
+
+if (db) {
+  try {
+    const result = await getLogEntries(db, { limit: 50, offset: 0 });
+    entries = result.entries;
+    total = result.total;
+
+    const latest = await getLatestEntry(db);
+    latestSeq = latest?.sequence_number ?? 0;
+    latestHash = latest?.payload_hash ?? '';
+
+    if (latestSeq > 0) {
+      const verification = await verifyChain(db);
+      chainValid = verification.valid;
+    }
+
+    // Get last 3 for chain visualization
+    recentThree = entries.slice(0, 3).reverse();
+  } catch (e) {
+    // Graceful degradation - table may not exist yet
+  }
+}
+
+function truncateHash(hash: string, len: number = 8): string {
+  if (!hash || hash === '0') return '0x0';
+  return hash.substring(0, len) + '...' + hash.substring(hash.length - 4);
+}
+
+function actionColor(action: string): string {
+  switch (action) {
+    case 'model:signed': return 'text-green-400 bg-green-400/10 border-green-400/20';
+    case 'model:verified': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+    case 'model:created': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+    case 'agent:registered': return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
+    case 'agent:revoked': return 'text-red-400 bg-red-400/10 border-red-400/20';
+    case 'manifest:pushed': return 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20';
+    default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+  }
+}
+
+function actionLabel(action: string): string {
+  return action.replace(':', ' ').toUpperCase();
+}
+---
+
+<MarketingLayout title="Transparency Log" description="Every action on QuantaMrkt is cryptographically chained in an append-only log. Anyone can verify.">
+  <div class="mx-auto max-w-7xl px-6 py-12">
+
+    <!-- Header Section -->
+    <div class="text-center mb-10">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Transparency Log</h1>
+      <p class="text-base text-gray-400 max-w-2xl mx-auto mb-6">
+        Every action on QuantaMrkt is cryptographically chained in an append-only log. Anyone can verify.
+      </p>
+
+      <!-- Chain Status -->
+      <div class="inline-flex items-center gap-4 rounded-xl border border-white/5 bg-navy-800 px-6 py-3">
+        <div class="flex items-center gap-2">
+          {chainValid ? (
+            <span class="flex h-3 w-3 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]"></span>
+            <span class="text-sm font-medium text-green-400">Chain Valid</span>
+          ) : (
+            <span class="flex h-3 w-3 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.5)]"></span>
+            <span class="text-sm font-medium text-red-400">Chain Broken</span>
+          )}
+        </div>
+        <span class="text-white/10">|</span>
+        <div class="text-sm text-gray-400">
+          <span class="text-white font-mono">{latestSeq}</span> entries
+        </div>
+        <span class="text-white/10">|</span>
+        <div class="text-sm text-gray-400">
+          Latest: <code class="text-xs font-mono text-electric">{truncateHash(latestHash, 12)}</code>
+        </div>
+        <button
+          id="verify-btn"
+          class="ml-2 rounded-lg bg-electric/10 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/20 transition-colors border border-electric/20"
+        >
+          Verify Chain
+        </button>
+      </div>
+
+      <!-- Verification Result -->
+      <div id="verify-result" class="hidden mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm"></div>
+    </div>
+
+    <!-- Chain Visualization -->
+    {recentThree.length > 1 && (
+      <div class="mb-10 overflow-x-auto">
+        <div class="flex items-center justify-center gap-0 min-w-max px-4">
+          {recentThree.map((entry: any, i: number) => (
+            <>
+              <div class="flex flex-col items-center">
+                <div class="rounded-lg border border-white/10 bg-navy-800 px-4 py-3 min-w-[180px]">
+                  <div class="text-xs text-gray-500 mb-1">Entry #{entry.sequence_number}</div>
+                  <div class:list={['text-xs font-medium px-2 py-0.5 rounded border inline-block mb-2', actionColor(entry.action)]}>
+                    {actionLabel(entry.action)}
+                  </div>
+                  <div class="text-xs font-mono text-gray-400" title={entry.payload_hash}>
+                    {truncateHash(entry.payload_hash, 10)}
+                  </div>
+                </div>
+                <div class="mt-1 text-[10px] text-gray-600 font-mono" title={entry.previous_hash}>
+                  prev: {truncateHash(entry.previous_hash, 6)}
+                </div>
+              </div>
+              {i < recentThree.length - 1 && (
+                <div class="flex items-center px-2 -mt-4">
+                  <div class="w-8 h-px bg-electric/40"></div>
+                  <svg class="w-4 h-4 text-electric/60 -ml-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              )}
+            </>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Filter Bar -->
+    <div class="flex flex-wrap items-center gap-3 mb-6">
+      <select id="filter-action" class="rounded-lg border border-white/10 bg-navy-800 px-3 py-2 text-sm text-gray-300 focus:border-electric/40 focus:outline-none">
+        <option value="">All Actions</option>
+        <option value="model:created">Model Created</option>
+        <option value="model:signed">Model Signed</option>
+        <option value="model:verified">Model Verified</option>
+        <option value="agent:registered">Agent Registered</option>
+        <option value="agent:revoked">Agent Revoked</option>
+        <option value="manifest:pushed">Manifest Pushed</option>
+      </select>
+      <select id="filter-target-type" class="rounded-lg border border-white/10 bg-navy-800 px-3 py-2 text-sm text-gray-300 focus:border-electric/40 focus:outline-none">
+        <option value="">All Targets</option>
+        <option value="model">Models</option>
+        <option value="agent">Agents</option>
+        <option value="manifest">Manifests</option>
+      </select>
+      <input
+        id="filter-target-id"
+        type="text"
+        placeholder="Search target ID..."
+        class="rounded-lg border border-white/10 bg-navy-800 px-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:border-electric/40 focus:outline-none min-w-[200px]"
+      />
+      <button
+        id="apply-filters"
+        class="rounded-lg bg-electric/10 px-4 py-2 text-sm font-medium text-electric hover:bg-electric/20 transition-colors border border-electric/20"
+      >
+        Apply
+      </button>
+      <button
+        id="clear-filters"
+        class="rounded-lg px-4 py-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+      >
+        Clear
+      </button>
+      <div class="ml-auto text-sm text-gray-500">
+        <span id="total-count">{total}</span> entries
+      </div>
+    </div>
+
+    <!-- Log Entries Table -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/5 text-left">
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Seq</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actor</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Payload Hash</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Chain</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody">
+            {entries.map((entry: any) => (
+              <tr
+                class="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors entry-row"
+                data-seq={entry.sequence_number}
+              >
+                <td class="px-4 py-3 font-mono text-xs text-white">#{entry.sequence_number}</td>
+                <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{entry.timestamp}</td>
+                <td class="px-4 py-3">
+                  <span class:list={['text-xs font-medium px-2 py-0.5 rounded border inline-block', actionColor(entry.action)]}>
+                    {actionLabel(entry.action)}
+                  </span>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs text-gray-400" title={entry.actor_did || 'system'}>
+                  {entry.actor_did ? truncateHash(entry.actor_did.replace('did:key:', ''), 8) : 'system'}
+                </td>
+                <td class="px-4 py-3">
+                  <span class="text-xs text-gray-500">{entry.target_type}/</span>
+                  <span class="text-xs text-white">{entry.target_id}</span>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs text-gray-500" title={entry.payload_hash}>
+                  {truncateHash(entry.payload_hash, 10)}
+                </td>
+                <td class="px-4 py-3 font-mono text-xs text-gray-600" title={entry.previous_hash}>
+                  {truncateHash(entry.previous_hash, 8)}
+                </td>
+              </tr>
+            ))}
+            {entries.length === 0 && (
+              <tr>
+                <td colspan="7" class="px-4 py-12 text-center text-sm text-gray-500">
+                  No transparency log entries yet. Actions will appear here as they are recorded.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-between mt-4" id="pagination">
+      <div class="text-xs text-gray-500">
+        Showing <span id="showing-start">1</span>-<span id="showing-end">{Math.min(50, total)}</span> of <span id="showing-total">{total}</span>
+      </div>
+      <div class="flex gap-2">
+        <button
+          id="prev-page"
+          disabled={true}
+          class="rounded-lg border border-white/10 bg-navy-800 px-3 py-1.5 text-xs text-gray-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Previous
+        </button>
+        <button
+          id="next-page"
+          disabled={total <= 50}
+          class="rounded-lg border border-white/10 bg-navy-800 px-3 py-1.5 text-xs text-gray-400 hover:text-white hover:border-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+
+    <!-- Entry Detail Panel (shown when clicking a row) -->
+    <div id="entry-detail" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div class="relative mx-4 w-full max-w-2xl rounded-2xl border border-white/10 bg-navy-900 p-6 shadow-2xl">
+        <button id="close-detail" class="absolute right-4 top-4 text-gray-500 hover:text-white transition-colors">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h3 class="text-lg font-bold text-white mb-4">Entry #<span id="detail-seq"></span></h3>
+
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <div class="text-xs text-gray-500 mb-1">Action</div>
+              <div id="detail-action" class="text-sm font-medium"></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 mb-1">Timestamp</div>
+              <div id="detail-timestamp" class="text-sm text-gray-300"></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 mb-1">Actor DID</div>
+              <div id="detail-actor" class="text-sm font-mono text-gray-300 break-all"></div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 mb-1">Target</div>
+              <div id="detail-target" class="text-sm text-gray-300"></div>
+            </div>
+          </div>
+
+          <div class="border-t border-white/5 pt-3">
+            <div class="text-xs font-medium text-white mb-2">Chain Proof</div>
+            <div class="rounded-lg bg-navy-800 p-4 space-y-2 font-mono text-xs">
+              <div>
+                <span class="text-gray-500">Previous hash:</span>
+                <span id="detail-prev-hash" class="text-gray-300 break-all ml-1"></span>
+              </div>
+              <div>
+                <span class="text-gray-500">Payload hash: </span>
+                <span id="detail-payload-hash" class="text-electric break-all ml-1"></span>
+              </div>
+              <div>
+                <span class="text-gray-500">Chain hash:   </span>
+                <span id="detail-chain-hash" class="text-cyan-400 break-all ml-1"></span>
+              </div>
+              <div class="border-t border-white/5 pt-2 mt-2">
+                <span class="text-gray-500">Merkle root:  </span>
+                <span id="detail-merkle" class="text-purple-400 break-all ml-1"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-white/5 pt-3">
+            <div class="flex items-center justify-between">
+              <div id="detail-valid" class="flex items-center gap-2 text-sm"></div>
+              <div class="flex gap-2">
+                <button
+                  id="verify-entry-btn"
+                  class="rounded-lg bg-electric/10 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/20 transition-colors border border-electric/20"
+                >
+                  Verify This Entry
+                </button>
+                <a
+                  id="detail-link"
+                  href="#"
+                  class="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors border border-white/10"
+                >
+                  View Target
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-white/5 pt-3">
+            <div class="text-xs text-gray-500 mb-1">Metadata</div>
+            <pre id="detail-metadata" class="text-xs font-mono text-gray-400 bg-navy-800 rounded-lg p-3 overflow-x-auto"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Client-side interactivity -->
+  <script>
+    let currentOffset = 0;
+    const PAGE_SIZE = 50;
+
+    // Verify Chain button
+    document.getElementById('verify-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('verify-btn') as HTMLButtonElement;
+      const resultEl = document.getElementById('verify-result')!;
+      btn.textContent = 'Verifying...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/transparency/verify');
+        const data = await res.json();
+
+        resultEl.classList.remove('hidden');
+        if (data.valid) {
+          resultEl.className = 'mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm bg-green-400/10 text-green-400 border border-green-400/20';
+          resultEl.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Chain integrity verified. ${data.entries_checked} entries checked.`;
+        } else {
+          resultEl.className = 'mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm bg-red-400/10 text-red-400 border border-red-400/20';
+          resultEl.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Chain broken at entry #${data.first_invalid}.`;
+        }
+      } catch (e) {
+        resultEl.classList.remove('hidden');
+        resultEl.className = 'mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm bg-yellow-400/10 text-yellow-400 border border-yellow-400/20';
+        resultEl.textContent = 'Verification failed. Please try again.';
+      }
+
+      btn.textContent = 'Verify Chain';
+      btn.disabled = false;
+    });
+
+    // Filter and pagination
+    async function fetchEntries(offset: number = 0) {
+      const action = (document.getElementById('filter-action') as HTMLSelectElement).value;
+      const targetType = (document.getElementById('filter-target-type') as HTMLSelectElement).value;
+      const targetId = (document.getElementById('filter-target-id') as HTMLInputElement).value;
+
+      const params = new URLSearchParams();
+      params.set('limit', String(PAGE_SIZE));
+      params.set('offset', String(offset));
+      if (action) params.set('action', action);
+      if (targetType) params.set('target_type', targetType);
+      if (targetId) params.set('target', targetId);
+
+      const res = await fetch(`/api/transparency/log?${params}`);
+      const data = await res.json();
+
+      currentOffset = offset;
+      renderEntries(data.entries, data.total);
+    }
+
+    function truncHash(hash: string, len: number = 8): string {
+      if (!hash || hash === '0') return '0x0';
+      return hash.substring(0, len) + '...' + hash.substring(hash.length - 4);
+    }
+
+    function getActionColor(action: string): string {
+      const colors: Record<string, string> = {
+        'model:signed': 'text-green-400 bg-green-400/10 border-green-400/20',
+        'model:verified': 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+        'model:created': 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+        'agent:registered': 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+        'agent:revoked': 'text-red-400 bg-red-400/10 border-red-400/20',
+        'manifest:pushed': 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20',
+      };
+      return colors[action] || 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+    }
+
+    function renderEntries(entries: any[], total: number) {
+      const tbody = document.getElementById('log-tbody')!;
+      document.getElementById('total-count')!.textContent = String(total);
+      document.getElementById('showing-start')!.textContent = total === 0 ? '0' : String(currentOffset + 1);
+      document.getElementById('showing-end')!.textContent = String(Math.min(currentOffset + PAGE_SIZE, total));
+      document.getElementById('showing-total')!.textContent = String(total);
+
+      (document.getElementById('prev-page') as HTMLButtonElement).disabled = currentOffset === 0;
+      (document.getElementById('next-page') as HTMLButtonElement).disabled = currentOffset + PAGE_SIZE >= total;
+
+      if (entries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-12 text-center text-sm text-gray-500">No entries match your filters.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = entries.map((entry: any) => `
+        <tr class="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors entry-row" data-seq="${entry.sequence_number}">
+          <td class="px-4 py-3 font-mono text-xs text-white">#${entry.sequence_number}</td>
+          <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">${entry.timestamp}</td>
+          <td class="px-4 py-3">
+            <span class="text-xs font-medium px-2 py-0.5 rounded border inline-block ${getActionColor(entry.action)}">
+              ${entry.action.replace(':', ' ').toUpperCase()}
+            </span>
+          </td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-400" title="${entry.actor_did || 'system'}">
+            ${entry.actor_did ? truncHash(entry.actor_did.replace('did:key:', ''), 8) : 'system'}
+          </td>
+          <td class="px-4 py-3">
+            <span class="text-xs text-gray-500">${entry.target_type}/</span>
+            <span class="text-xs text-white">${entry.target_id}</span>
+          </td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-500" title="${entry.payload_hash}">
+            ${truncHash(entry.payload_hash, 10)}
+          </td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-600" title="${entry.previous_hash}">
+            ${truncHash(entry.previous_hash, 8)}
+          </td>
+        </tr>
+      `).join('');
+
+      // Re-attach row click handlers
+      attachRowHandlers();
+    }
+
+    document.getElementById('apply-filters')?.addEventListener('click', () => fetchEntries(0));
+    document.getElementById('clear-filters')?.addEventListener('click', () => {
+      (document.getElementById('filter-action') as HTMLSelectElement).value = '';
+      (document.getElementById('filter-target-type') as HTMLSelectElement).value = '';
+      (document.getElementById('filter-target-id') as HTMLInputElement).value = '';
+      fetchEntries(0);
+    });
+    document.getElementById('prev-page')?.addEventListener('click', () => {
+      if (currentOffset > 0) fetchEntries(currentOffset - PAGE_SIZE);
+    });
+    document.getElementById('next-page')?.addEventListener('click', () => fetchEntries(currentOffset + PAGE_SIZE));
+
+    // Entry detail panel
+    function attachRowHandlers() {
+      document.querySelectorAll('.entry-row').forEach((row) => {
+        row.addEventListener('click', async () => {
+          const seq = (row as HTMLElement).dataset.seq;
+          if (!seq) return;
+
+          const panel = document.getElementById('entry-detail')!;
+          panel.classList.remove('hidden');
+
+          try {
+            const res = await fetch(`/api/transparency/entry/${seq}`);
+            const data = await res.json();
+            const entry = data.entry;
+            const proof = data.proof;
+
+            document.getElementById('detail-seq')!.textContent = String(entry.sequence_number);
+            document.getElementById('detail-timestamp')!.textContent = entry.timestamp;
+
+            const actionEl = document.getElementById('detail-action')!;
+            actionEl.className = `text-sm font-medium px-2 py-0.5 rounded border inline-block ${getActionColor(entry.action)}`;
+            actionEl.textContent = entry.action.replace(':', ' ').toUpperCase();
+
+            document.getElementById('detail-actor')!.textContent = entry.actor_did || 'system';
+            document.getElementById('detail-target')!.textContent = `${entry.target_type}/${entry.target_id}`;
+            document.getElementById('detail-prev-hash')!.textContent = entry.previous_hash;
+            document.getElementById('detail-payload-hash')!.textContent = entry.payload_hash;
+            document.getElementById('detail-chain-hash')!.textContent = proof.computed_hash;
+            document.getElementById('detail-merkle')!.textContent = entry.merkle_root || 'N/A';
+
+            const validEl = document.getElementById('detail-valid')!;
+            if (proof.valid) {
+              validEl.innerHTML = `<span class="flex h-2.5 w-2.5 rounded-full bg-green-400"></span><span class="text-green-400">Chain link valid</span>`;
+            } else {
+              validEl.innerHTML = `<span class="flex h-2.5 w-2.5 rounded-full bg-red-400"></span><span class="text-red-400">Chain link broken</span>`;
+            }
+
+            // Set target link
+            const link = document.getElementById('detail-link') as HTMLAnchorElement;
+            if (entry.target_type === 'model') {
+              link.href = `/models/${entry.target_id}`;
+              link.classList.remove('hidden');
+            } else if (entry.target_type === 'agent') {
+              link.href = `/agents`;
+              link.classList.remove('hidden');
+            } else {
+              link.classList.add('hidden');
+            }
+
+            document.getElementById('detail-metadata')!.textContent = JSON.stringify(entry.metadata, null, 2);
+          } catch (e) {
+            // Close panel on error
+            panel.classList.add('hidden');
+          }
+        });
+      });
+    }
+
+    // Close detail panel
+    document.getElementById('close-detail')?.addEventListener('click', () => {
+      document.getElementById('entry-detail')!.classList.add('hidden');
+    });
+    document.getElementById('entry-detail')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('entry-detail')) {
+        document.getElementById('entry-detail')!.classList.add('hidden');
+      }
+    });
+
+    // Verify single entry button
+    document.getElementById('verify-entry-btn')?.addEventListener('click', async () => {
+      const seq = document.getElementById('detail-seq')!.textContent;
+      const btn = document.getElementById('verify-entry-btn') as HTMLButtonElement;
+      btn.textContent = 'Verifying...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/transparency/entry/${seq}`);
+        const data = await res.json();
+        const validEl = document.getElementById('detail-valid')!;
+        if (data.proof.valid) {
+          validEl.innerHTML = `<span class="flex h-2.5 w-2.5 rounded-full bg-green-400"></span><span class="text-green-400">Verified: chain link is valid</span>`;
+        } else {
+          validEl.innerHTML = `<span class="flex h-2.5 w-2.5 rounded-full bg-red-400"></span><span class="text-red-400">Verification failed: chain link broken</span>`;
+        }
+      } catch (e) {
+        // Ignore
+      }
+
+      btn.textContent = 'Verify This Entry';
+      btn.disabled = false;
+    });
+
+    // Initial setup
+    attachRowHandlers();
+  </script>
+</MarketingLayout>

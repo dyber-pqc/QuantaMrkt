@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getAgents, createAgent, logActivity } from '../../../lib/db';
 import { getApiUser } from '../../../lib/api-auth';
+import { appendLogEntry } from '../../../lib/transparency';
 
 export const GET: APIRoute = async ({ url, locals }) => {
   try {
@@ -56,6 +57,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
       action: 'agent.register',
       target: did,
       details: `Registered agent ${name}`,
+    });
+
+    // Append to transparency log
+    await appendLogEntry(db, {
+      action: 'agent:registered',
+      actor_did: did,
+      target_type: 'agent',
+      target_id: did,
+      metadata: { name, algorithm, capabilities: capabilities || [] },
     });
 
     return new Response(JSON.stringify(agent), {

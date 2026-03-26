@@ -1,0 +1,334 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+---
+
+<MarketingLayout title="Download QuantumShield CLI" description="Download the QuantumShield CLI for PQC model signing, verification, and registry operations.">
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-electric/[0.03] to-transparent pointer-events-none" />
+    <div class="mx-auto max-w-5xl px-6 py-16 text-center relative">
+      <div class="inline-flex items-center gap-2 rounded-full border border-electric/20 bg-electric/5 px-4 py-1.5 mb-6">
+        <svg class="h-4 w-4 text-electric" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        <span class="text-xs text-electric font-medium">CLI Tool</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">Download <span class="text-electric">QuantumShield</span> CLI</h1>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+        The command-line tool for PQC model signing, verification, and registry operations.
+      </p>
+
+      <!-- Auto-detect OS recommendation -->
+      <div id="os-recommend" class="rounded-xl border border-electric/20 bg-navy-800 p-6 max-w-lg mx-auto mb-8">
+        <p class="text-xs text-gray-500 uppercase tracking-wider mb-3">Recommended for your system</p>
+        <div id="os-name" class="text-lg font-bold text-white mb-3">Detecting...</div>
+        <div id="os-install" class="rounded-lg bg-navy-900 border border-white/5 p-4 mb-4 text-left relative group">
+          <code id="os-command" class="text-sm font-mono text-electric break-all">pip install quantumshield</code>
+          <button id="os-copy" class="absolute top-3 right-3 rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+        <a href="https://pypi.org/project/quantumshield/" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-lg bg-electric text-navy-900 font-semibold text-sm px-6 py-2.5 hover:bg-electric/90 transition-colors">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+          Install via pip
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Platform Cards -->
+  <section class="mx-auto max-w-6xl px-6 pb-16">
+    <h2 class="text-2xl font-bold text-center mb-8">All Platforms</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <!-- macOS -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5 flex flex-col">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
+            <svg class="h-6 w-6 text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" /></svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">macOS</h3>
+            <p class="text-[10px] text-gray-500">x86_64, ARM64</p>
+          </div>
+        </div>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-3 mb-3 text-left relative group flex-1">
+          <code class="text-[11px] font-mono text-gray-400 break-all">curl -fsSL https://quantamrkt.com/install.sh | sh</code>
+          <button data-copy="curl -fsSL https://quantamrkt.com/install.sh | sh" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+        <div class="flex items-center gap-2 text-[10px] text-gray-600 mb-3">
+          <span class="rounded bg-white/5 px-1.5 py-0.5">brew install quantumshield</span>
+          <span class="text-yellow-500/60 border border-yellow-500/20 rounded px-1 py-0.5 text-[9px]">Soon</span>
+        </div>
+        <a href="https://pypi.org/project/quantumshield/" target="_blank" class="block w-full rounded-lg bg-electric text-navy-900 font-semibold text-xs py-2 hover:bg-electric/90 transition-colors text-center">
+          Install
+        </a>
+      </div>
+
+      <!-- Linux -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5 flex flex-col">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
+            <svg class="h-6 w-6 text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.868.07 1.723-.26 2.456-.594.733-.34 1.337-.64 1.585-.264.248.378.304.145.236-.36-.068-.504-.263-.927-.473-1.233-.209-.303-.348-.541-.4-.867-.07-.424.146-.984.535-1.563.386-.578.963-1.175 1.373-1.839.408-.67.615-1.501.355-2.237-.263-.736-.8-1.22-1.462-1.7-.66-.48-1.345-.777-1.682-1.293-.169-.263-.29-.641-.428-1.025-.137-.384-.278-.767-.485-1.107-.206-.34-.474-.652-.859-.876a3.16 3.16 0 00-.618-.29c-.045-.012-.11-.023-.166-.045a8.94 8.94 0 00-.097-2.313c-.294-1.66-.753-3.174-2.06-4.27A4.97 4.97 0 0012.504 0z" /></svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Linux</h3>
+            <p class="text-[10px] text-gray-500">x86_64, ARM64</p>
+          </div>
+        </div>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-3 mb-3 text-left relative group flex-1">
+          <code class="text-[11px] font-mono text-gray-400 break-all">curl -fsSL https://quantamrkt.com/install.sh | sh</code>
+          <button data-copy="curl -fsSL https://quantamrkt.com/install.sh | sh" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+        <a href="https://pypi.org/project/quantumshield/" target="_blank" class="block w-full rounded-lg bg-electric text-navy-900 font-semibold text-xs py-2 hover:bg-electric/90 transition-colors text-center mt-auto">
+          Install
+        </a>
+      </div>
+
+      <!-- Windows -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5 flex flex-col">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
+            <svg class="h-6 w-6 text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" /></svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Windows</h3>
+            <p class="text-[10px] text-gray-500">x86_64</p>
+          </div>
+        </div>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-3 mb-3 text-left relative group flex-1">
+          <code class="text-[11px] font-mono text-gray-400 break-all">irm https://quantamrkt.com/install.ps1 | iex</code>
+          <button data-copy="irm https://quantamrkt.com/install.ps1 | iex" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+        <div class="flex items-center gap-2 mb-3">
+          <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" class="text-[10px] text-gray-500 hover:text-gray-300 transition-colors underline">Download .exe</a>
+          <span class="text-yellow-500/60 border border-yellow-500/20 rounded px-1 py-0.5 text-[9px]">Soon</span>
+        </div>
+        <a href="https://pypi.org/project/quantumshield/" target="_blank" class="block w-full rounded-lg bg-electric text-navy-900 font-semibold text-xs py-2 hover:bg-electric/90 transition-colors text-center mt-auto">
+          Install
+        </a>
+      </div>
+
+      <!-- FreeBSD -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5 flex flex-col">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5">
+            <svg class="h-6 w-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">FreeBSD</h3>
+            <p class="text-[10px] text-gray-500">x86_64</p>
+          </div>
+        </div>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-3 mb-3 text-left relative group flex-1">
+          <code class="text-[11px] font-mono text-gray-400 break-all">curl -fsSL https://quantamrkt.com/install.sh | sh</code>
+          <button data-copy="curl -fsSL https://quantamrkt.com/install.sh | sh" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+        <a href="https://pypi.org/project/quantumshield/" target="_blank" class="block w-full rounded-lg bg-electric text-navy-900 font-semibold text-xs py-2 hover:bg-electric/90 transition-colors text-center mt-auto">
+          Install
+        </a>
+      </div>
+    </div>
+
+    <!-- Standalone Binaries -->
+    <div class="mt-6 rounded-xl border border-white/5 bg-navy-800 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-white">Standalone Binaries</h3>
+        <span class="text-yellow-500/80 border border-yellow-500/20 bg-yellow-500/5 rounded-full px-3 py-0.5 text-[10px] font-medium">Coming Soon</span>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">No Python required. Self-contained executables for all platforms.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left opacity-50 cursor-not-allowed">
+          <p class="text-xs font-medium text-gray-400">quantumshield-linux-x86_64</p>
+          <p class="text-[10px] text-gray-600">Linux x86_64</p>
+        </button>
+        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left opacity-50 cursor-not-allowed">
+          <p class="text-xs font-medium text-gray-400">quantumshield-macos-x86_64</p>
+          <p class="text-[10px] text-gray-600">macOS x86_64</p>
+        </button>
+        <button disabled class="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left opacity-50 cursor-not-allowed">
+          <p class="text-xs font-medium text-gray-400">quantumshield-windows-x86_64.exe</p>
+          <p class="text-[10px] text-gray-600">Windows x86_64</p>
+        </button>
+      </div>
+      <p class="text-[10px] text-gray-600 mt-3">
+        Binaries will be available on <a href="https://github.com/dyber-pqc/QuantaMrkt/releases" target="_blank" class="text-electric hover:underline">GitHub Releases</a> when ready.
+      </p>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section class="border-t border-white/5 bg-navy-900">
+    <div class="mx-auto max-w-4xl px-6 py-16">
+      <h2 class="text-2xl font-bold text-center mb-8">Quick Start</h2>
+      <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/5 flex items-center gap-2">
+          <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          <span class="text-xs text-gray-400">Terminal</span>
+        </div>
+        <div class="p-6">
+          <pre class="text-sm font-mono text-gray-400 leading-relaxed whitespace-pre-wrap"><span class="text-gray-600"># Authenticate</span>
+<span class="text-electric">quantumshield</span> login
+
+<span class="text-gray-600"># Sign your first model</span>
+<span class="text-electric">quantumshield</span> push ./my-model --name myorg/my-model
+
+<span class="text-gray-600"># Verify a model</span>
+<span class="text-electric">quantumshield</span> verify meta-llama/Llama-3.1-70B-Instruct
+
+<span class="text-gray-600"># Browse the registry</span>
+<span class="text-electric">quantumshield</span> search llama</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- pip Install Options -->
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <h2 class="text-2xl font-bold text-center mb-8">Install via pip</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <h3 class="text-sm font-semibold text-white mb-2">Standard Install</h3>
+        <p class="text-xs text-gray-500 mb-3">Core CLI with simulated PQC signatures.</p>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-3 relative group">
+          <code class="text-sm font-mono text-electric">pip install quantumshield</code>
+          <button data-copy="pip install quantumshield" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+      </div>
+      <div class="rounded-xl border border-electric/20 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 mb-2">
+          <h3 class="text-sm font-semibold text-white">With Real PQC Crypto</h3>
+          <span class="text-quantum border border-quantum/20 rounded-full px-2 py-0.5 text-[9px] font-medium">Recommended</span>
+        </div>
+        <p class="text-xs text-gray-500 mb-3">Includes liboqs for real ML-DSA / SLH-DSA signatures.</p>
+        <div class="rounded-lg bg-navy-900 border border-white/5 p-3 relative group">
+          <code class="text-sm font-mono text-quantum">pip install quantumshield[pqc]</code>
+          <button data-copy="pip install quantumshield[pqc]" class="absolute top-2 right-2 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors opacity-0 group-hover:opacity-100">Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Requirements -->
+  <section class="border-t border-white/5 bg-navy-900">
+    <div class="mx-auto max-w-4xl px-6 py-16">
+      <h2 class="text-2xl font-bold text-center mb-8">Requirements</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="h-5 w-5 text-electric" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            <h3 class="text-sm font-semibold text-white">Python 3.10+</h3>
+          </div>
+          <p class="text-xs text-gray-500">Required for pip install. Most systems have Python pre-installed.</p>
+        </div>
+        <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="h-5 w-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <h3 class="text-sm font-semibold text-white">Standalone Binary</h3>
+          </div>
+          <p class="text-xs text-gray-500">No Python needed. Coming soon for all platforms.</p>
+        </div>
+        <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="h-5 w-5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            <h3 class="text-sm font-semibold text-white">liboqs (Optional)</h3>
+          </div>
+          <p class="text-xs text-gray-500">For real ML-DSA signatures. Install with <code class="text-electric text-[10px]">quantumshield[pqc]</code>.</p>
+        </div>
+      </div>
+
+      <!-- System Requirements Table -->
+      <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/5">
+          <h3 class="text-sm font-semibold text-gray-300">System Requirements</h3>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/5 text-xs text-gray-500">
+              <th class="text-left font-medium px-5 py-3">Platform</th>
+              <th class="text-left font-medium px-5 py-3">Architecture</th>
+              <th class="text-center font-medium px-5 py-3">pip Install</th>
+              <th class="text-center font-medium px-5 py-3">Standalone Binary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-white/[0.03] bg-white/[0.01]">
+              <td class="px-5 py-3 text-xs text-gray-300">macOS 13+</td>
+              <td class="px-5 py-3 text-xs text-gray-400 font-mono">x86_64, ARM64</td>
+              <td class="px-5 py-3 text-center">
+                <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
+              </td>
+              <td class="px-5 py-3 text-center">
+                <span class="text-xs text-yellow-500">Coming Soon</span>
+              </td>
+            </tr>
+            <tr class="border-b border-white/[0.03]">
+              <td class="px-5 py-3 text-xs text-gray-300">Linux</td>
+              <td class="px-5 py-3 text-xs text-gray-400 font-mono">x86_64, ARM64</td>
+              <td class="px-5 py-3 text-center">
+                <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
+              </td>
+              <td class="px-5 py-3 text-center">
+                <span class="text-xs text-yellow-500">Coming Soon</span>
+              </td>
+            </tr>
+            <tr class="border-b border-white/[0.03] bg-white/[0.01]">
+              <td class="px-5 py-3 text-xs text-gray-300">Windows 10+</td>
+              <td class="px-5 py-3 text-xs text-gray-400 font-mono">x86_64</td>
+              <td class="px-5 py-3 text-center">
+                <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
+              </td>
+              <td class="px-5 py-3 text-center">
+                <span class="text-xs text-yellow-500">Coming Soon</span>
+              </td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 text-xs text-gray-300">FreeBSD 13+</td>
+              <td class="px-5 py-3 text-xs text-gray-400 font-mono">x86_64</td>
+              <td class="px-5 py-3 text-center">
+                <span class="inline-flex items-center gap-1 text-xs text-quantum"><svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg> Available</span>
+              </td>
+              <td class="px-5 py-3 text-center">
+                <span class="text-xs text-yellow-500">Coming Soon</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+<script>
+  // Auto-detect OS
+  const ua = navigator.userAgent.toLowerCase();
+  const osName = document.getElementById('os-name');
+  const osCommand = document.getElementById('os-command');
+  const osCopy = document.getElementById('os-copy');
+
+  let detectedOS = 'Linux';
+  let installCmd = 'curl -fsSL https://quantamrkt.com/install.sh | sh';
+
+  if (ua.includes('win')) {
+    detectedOS = 'Windows';
+    installCmd = 'irm https://quantamrkt.com/install.ps1 | iex';
+  } else if (ua.includes('mac') || ua.includes('darwin')) {
+    detectedOS = 'macOS';
+    installCmd = 'curl -fsSL https://quantamrkt.com/install.sh | sh';
+  } else if (ua.includes('freebsd')) {
+    detectedOS = 'FreeBSD';
+  }
+
+  if (osName) osName.textContent = detectedOS;
+  if (osCommand) osCommand.textContent = installCmd;
+  if (osCopy) osCopy.dataset.copy = installCmd;
+
+  // Copy-to-clipboard
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = (btn as HTMLElement).dataset.copy || '';
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig || ''; }, 1500);
+    });
+  });
+</script>
+</MarketingLayout>

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getModels, createModel, logActivity } from '../../../lib/db';
 import { getApiUser } from '../../../lib/api-auth';
+import { appendLogEntry } from '../../../lib/transparency';
 
 export const GET: APIRoute = async ({ url, locals }) => {
   try {
@@ -52,6 +53,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
       action: 'model.create',
       target: slug,
       details: `Created model ${name}`,
+    });
+
+    // Append to transparency log
+    await appendLogEntry(db, {
+      action: 'model:created',
+      actor_did: undefined,
+      target_type: 'model',
+      target_id: slug,
+      metadata: { name, author, framework: framework || null },
     });
 
     return new Response(JSON.stringify(model), {

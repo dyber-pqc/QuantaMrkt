@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
   { label: 'Models', href: '/models' },
   { label: 'Agents', href: '/agents' },
   { label: 'Explore', href: '/explore' },
+  { label: 'Download', href: '/download' },
   { label: 'Features', href: '/features' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Docs', href: '/docs' },
