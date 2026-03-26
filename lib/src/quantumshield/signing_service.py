@@ -203,6 +203,21 @@ class PQCSigningService:
             except Exception as exc:  # noqa: BLE001
                 results["errors"].append(f"{slug}: {exc}")
 
+        # Store public key in the platform config via API
+        try:
+            pk_resp = httpx.post(
+                f"{API_URL}/api/config/public-key",
+                json={"public_key_hex": self.get_public_key_hex()},
+                headers=headers,
+                timeout=30,
+            )
+            if pk_resp.status_code in (200, 201):
+                print("Platform public key saved to registry.")
+            else:
+                print(f"Warning: could not save public key: HTTP {pk_resp.status_code}")
+        except Exception as exc:
+            print(f"Warning: could not save public key: {exc}")
+
         return results
 
 
