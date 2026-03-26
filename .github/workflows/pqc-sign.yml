@@ -68,7 +68,7 @@ jobs:
                   print(f'Key load failed ({e}) - generating new keypair')
 
           if need_new_key:
-              print('No valid keys found. Generating new ML-DSA-87 keypair...')
+              print('Generating new ML-DSA-87 keypair...')
               avail = oqs.get_enabled_sig_mechanisms()
               alg = 'ML-DSA-87' if 'ML-DSA-87' in avail else 'Dilithium5'
               print(f'Using algorithm: {alg}')
@@ -79,29 +79,23 @@ jobs:
               pk_hex = pk.hex()
               sk_hex = sk.hex()
 
-              # Write keys to files so the signing step can read them
-              with open('/tmp/pk.hex', 'w') as f: f.write(pk_hex)
-              with open('/tmp/sk.hex', 'w') as f: f.write(sk_hex)
-
-              # Mask private key in logs
+              # Mask private key so it never appears in logs
               print(f'::add-mask::{sk_hex}')
 
-              print(f'Keys generated: public={len(pk)} bytes, private={len(sk)} bytes')
-              print(f'Public key (first 80 chars): {pk_hex[:80]}...')
-              print()
-              print('Keys written to temp files for signing step.')
-              print('IMPORTANT: After this run, save these as GitHub secrets:')
-              print(f'  PLATFORM_ML_DSA_PUBLIC_KEY = {pk_hex}')
-              print(f'  PLATFORM_ML_DSA_PRIVATE_KEY = [masked in logs]')
-          "
+              # Auto-save to GitHub secrets
+              repo = 'dyber-pqc/QuantaMrkt'
+              print('Saving keys to GitHub secrets...')
+              subprocess.run(['gh', 'secret', 'set', 'PLATFORM_ML_DSA_PUBLIC_KEY', '--repo', repo, '--body', pk_hex], check=True)
+              subprocess.run(['gh', 'secret', 'set', 'PLATFORM_ML_DSA_PRIVATE_KEY', '--repo', repo, '--body', sk_hex], check=True)
 
-      - name: Export generated keys to env (if newly created)
-        run: |
-          if [ -f /tmp/pk.hex ] && [ -f /tmp/sk.hex ]; then
-            echo "PLATFORM_ML_DSA_PUBLIC_KEY=$(cat /tmp/pk.hex)" >> $GITHUB_ENV
-            echo "PLATFORM_ML_DSA_PRIVATE_KEY=$(cat /tmp/sk.hex)" >> $GITHUB_ENV
-            echo "Keys loaded from temp files for signing"
-          fi
+              # Also write to env so this same run can use them
+              with open(os.environ['GITHUB_ENV'], 'a') as f:
+                  f.write(f'PLATFORM_ML_DSA_PUBLIC_KEY={pk_hex}\n')
+                  f.write(f'PLATFORM_ML_DSA_PRIVATE_KEY={sk_hex}\n')
+
+              print(f'Done. Public key ({len(pk)} bytes): {pk_hex[:60]}...')
+              print('Keys saved to secrets and exported for signing step.')
+          "
 
       - name: Sign all models
         env:
