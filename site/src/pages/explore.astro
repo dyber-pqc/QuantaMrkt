@@ -1,40 +1,41 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { SITE } from '../lib/constants';
+import { getTrendingModels, getRecentVerifications, getHndlLeaderboard } from '../lib/db';
 
-const trendingModels = [
-  { name: 'Llama-3.1-70B-Instruct', author: 'meta-llama', slug: 'meta-llama-Llama-3.1-70B-Instruct', downloads: '2.4M', verifications: 847, risk: 'CRITICAL', riskBadge: 'badge-critical' },
-  { name: 'FLUX.1-dev', author: 'black-forest-labs', slug: 'black-forest-labs-FLUX.1-dev', downloads: '3.2M', verifications: 612, risk: 'MEDIUM', riskBadge: 'badge-medium' },
-  { name: 'whisper-large-v3', author: 'openai', slug: 'openai-whisper-large-v3', downloads: '4.7M', verifications: 534, risk: 'MEDIUM', riskBadge: 'badge-medium' },
-  { name: 'Mixtral-8x22B-Instruct', author: 'mistralai', slug: 'mistralai-Mixtral-8x22B-Instruct-v0.1', downloads: '1.8M', verifications: 421, risk: 'HIGH', riskBadge: 'badge-high' },
-  { name: 'gemma-2-27b-it', author: 'google', slug: 'google-gemma-2-27b-it', downloads: '1.1M', verifications: 389, risk: 'HIGH', riskBadge: 'badge-high' },
-];
+const db = (Astro.locals as any).runtime?.env?.DB;
+const trending = db ? await getTrendingModels(db, 5) : [];
+const recent = db ? await getRecentVerifications(db, 10) : [];
+const leaderboard = db ? await getHndlLeaderboard(db, 10) : [];
 
-const recentVerifications = [
-  { time: '3 min ago', model: 'meta-llama/Llama-3.1-70B-Instruct', signer: 'did:web:meta.com:ml-signing', algorithm: 'ML-DSA-87' },
-  { time: '12 min ago', model: 'black-forest-labs/FLUX.1-dev', signer: 'did:web:bfl.com:signing', algorithm: 'ML-DSA-87' },
-  { time: '28 min ago', model: 'openai/whisper-large-v3', signer: 'did:web:openai.com:registry', algorithm: 'ML-DSA-87' },
-  { time: '45 min ago', model: 'BAAI/bge-m3', signer: 'did:web:baai.ac.cn:models', algorithm: 'ML-DSA-65' },
-  { time: '1h ago', model: 'codellama/CodeLlama-34b-Instruct', signer: 'did:web:meta.com:ml-signing', algorithm: 'ML-DSA-87' },
-  { time: '1h ago', model: 'mistralai/Mixtral-8x22B-Instruct', signer: 'did:web:mistral.ai:registry', algorithm: 'ML-DSA-65' },
-  { time: '2h ago', model: 'google/gemma-2-27b-it', signer: 'did:web:google.com:ai-safety', algorithm: 'ML-DSA-65' },
-  { time: '3h ago', model: 'liuhaotian/llava-v1.6-34b', signer: 'did:web:quantmrkt.com:verification', algorithm: 'ML-DSA-65' },
-  { time: '4h ago', model: 'microsoft/Phi-3-medium-128k', signer: 'did:web:microsoft.com:ai', algorithm: 'ML-DSA-87' },
-  { time: '5h ago', model: 'thenlper/gte-large', signer: 'did:web:quantmrkt.com:verification', algorithm: 'ML-DSA-44' },
-];
+function formatDownloads(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
+  return String(n);
+}
 
-const hndlLeaderboard = [
-  { name: 'Llama-3.1-70B-Instruct', author: 'meta-llama', score: 82, shelfLife: '12 yr', recommendation: 'Immediate PQC migration' },
-  { name: 'Mixtral-8x22B-Instruct', author: 'mistralai', score: 78, shelfLife: '15 yr', recommendation: 'Urgent PQC migration' },
-  { name: 'CodeLlama-34b-Instruct', author: 'codellama', score: 75, shelfLife: '14 yr', recommendation: 'Urgent PQC migration' },
-  { name: 'gemma-2-27b-it', author: 'google', score: 71, shelfLife: '16 yr', recommendation: 'Plan PQC migration' },
-  { name: 'llava-v1.6-34b', author: 'liuhaotian', score: 68, shelfLife: '18 yr', recommendation: 'Plan PQC migration' },
-  { name: 'Phi-3-medium-128k', author: 'microsoft', score: 54, shelfLife: '20 yr', recommendation: 'Monitor' },
-  { name: 'FLUX.1-dev', author: 'black-forest-labs', score: 48, shelfLife: '22 yr', recommendation: 'Monitor' },
-  { name: 'whisper-large-v3', author: 'openai', score: 45, shelfLife: '22 yr', recommendation: 'Monitor' },
-  { name: 'bge-m3', author: 'BAAI', score: 32, shelfLife: '25+ yr', recommendation: 'Low priority' },
-  { name: 'gte-large', author: 'thenlper', score: 28, shelfLife: '25+ yr', recommendation: 'Low priority' },
-];
+function riskBadgeClass(level: string | null | undefined): string {
+  if (!level) return 'badge-low';
+  switch (level.toUpperCase()) {
+    case 'CRITICAL': return 'badge-critical';
+    case 'HIGH': return 'badge-high';
+    case 'MEDIUM': return 'badge-medium';
+    default: return 'badge-low';
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = now - then;
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 ---
 
 <MarketingLayout title="Explore" description="Trending models, recent verifications, and community activity on QuantaMrkt">
@@ -51,29 +52,35 @@ const hndlLeaderboard = [
         <h2 class="text-sm font-semibold text-white">Trending Models</h2>
         <a href="/models" class="text-xs text-electric hover:text-electric-400 transition-colors">View all</a>
       </div>
-      <div class="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
-        {trendingModels.map((model) => (
-          <a href={`/models/${model.slug}`} class="flex-shrink-0 w-64 rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-electric/20 transition-colors group">
-            <div class="flex items-center gap-2 mb-2">
-              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-xs font-bold text-gray-400">
-                {model.author[0].toUpperCase()}
+      {trending.length > 0 ? (
+        <div class="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+          {trending.map((model: any) => (
+            <a href={`/models/${model.slug}`} class="flex-shrink-0 w-64 rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-electric/20 transition-colors group">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-xs font-bold text-gray-400">
+                  {model.author?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold text-gray-200 group-hover:text-white truncate">{model.name}</p>
+                  <p class="text-[10px] text-gray-500">{model.author}</p>
+                </div>
               </div>
-              <div class="min-w-0">
-                <p class="text-xs font-semibold text-gray-200 group-hover:text-white truncate">{model.name}</p>
-                <p class="text-[10px] text-gray-500">{model.author}</p>
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-gray-500">{formatDownloads(model.downloads)} downloads</span>
+                {model.risk_level && <span class={riskBadgeClass(model.risk_level) + ' !text-[10px] !px-1.5 !py-0'}>{model.risk_level}</span>}
               </div>
-            </div>
-            <div class="flex items-center justify-between text-[11px]">
-              <span class="text-gray-500">{model.downloads} downloads</span>
-              <span class={model.riskBadge + ' !text-[10px] !px-1.5 !py-0'}>{model.risk}</span>
-            </div>
-            <div class="mt-2 flex items-center gap-1">
-              <svg class="h-3 w-3 text-quantum" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
-              <span class="text-[10px] text-quantum">{model.verifications} verifications</span>
-            </div>
-          </a>
-        ))}
-      </div>
+              <div class="mt-2 flex items-center gap-1">
+                <svg class="h-3 w-3 text-quantum" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                <span class="text-[10px] text-quantum">{model.signature_count ?? 0} verifications</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div class="rounded-xl border border-white/5 bg-navy-800 px-5 py-8 text-center text-xs text-gray-600">
+          No trending models yet.
+        </div>
+      )}
     </section>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -87,18 +94,22 @@ const hndlLeaderboard = [
               <span class="relative inline-flex rounded-full h-2 w-2 bg-quantum"></span>
             </span>
           </div>
-          <div class="divide-y divide-white/[0.03]">
-            {recentVerifications.map((event, i) => (
-              <div class={`px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-                <div class="flex items-center justify-between mb-0.5">
-                  <span class="text-[11px] text-gray-500">{event.time}</span>
-                  <span class="font-mono text-[10px] text-gray-600">{event.algorithm}</span>
+          {recent.length > 0 ? (
+            <div class="divide-y divide-white/[0.03]">
+              {recent.map((event: any, i: number) => (
+                <div class={`px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <div class="flex items-center justify-between mb-0.5">
+                    <span class="text-[11px] text-gray-500">{event.signed_at ? timeAgo(event.signed_at) : ''}</span>
+                    <span class="font-mono text-[10px] text-gray-600">{event.algorithm}</span>
+                  </div>
+                  <p class="text-xs text-gray-300 font-mono truncate">{event.model_author}/{event.model_name}</p>
+                  <p class="text-[10px] text-gray-600 font-mono truncate">{event.signer}</p>
                 </div>
-                <p class="text-xs text-gray-300 font-mono truncate">{event.model}</p>
-                <p class="text-[10px] text-gray-600 font-mono truncate">{event.signer}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div class="px-4 py-8 text-center text-xs text-gray-600">No recent verifications.</div>
+          )}
         </div>
       </div>
 
@@ -109,46 +120,50 @@ const hndlLeaderboard = [
             <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk Leaderboard</h2>
             <p class="text-[10px] text-gray-600 mt-0.5">Highest-risk popular models by quantum vulnerability score</p>
           </div>
-          <table class="w-full text-xs">
-            <thead>
-              <tr class="border-b border-white/5 text-gray-500">
-                <th class="text-left font-medium px-4 py-2 w-8">#</th>
-                <th class="text-left font-medium px-4 py-2">Model</th>
-                <th class="text-center font-medium px-4 py-2">Score</th>
-                <th class="text-left font-medium px-4 py-2 hidden sm:table-cell">Shelf Life</th>
-                <th class="text-left font-medium px-4 py-2 hidden md:table-cell">Recommendation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hndlLeaderboard.map((item, i) => (
-                <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-                  <td class="px-4 py-2 text-gray-600 font-mono">{i + 1}</td>
-                  <td class="px-4 py-2">
-                    <p class="text-gray-200 font-medium">{item.name}</p>
-                    <p class="text-[10px] text-gray-500">{item.author}</p>
-                  </td>
-                  <td class="px-4 py-2 text-center">
-                    <span class={`font-mono font-semibold ${
-                      item.score >= 70 ? 'text-danger' :
-                      item.score >= 50 ? 'text-warning' :
-                      item.score >= 35 ? 'text-electric' :
-                      'text-quantum'
-                    }`}>{item.score}</span>
-                  </td>
-                  <td class="px-4 py-2 hidden sm:table-cell">
-                    <span class="font-mono text-gray-400">{item.shelfLife}</span>
-                  </td>
-                  <td class="px-4 py-2 hidden md:table-cell">
-                    <span class={`text-[11px] ${
-                      item.score >= 70 ? 'text-danger' :
-                      item.score >= 50 ? 'text-warning' :
-                      'text-gray-500'
-                    }`}>{item.recommendation}</span>
-                  </td>
+          {leaderboard.length > 0 ? (
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-white/5 text-gray-500">
+                  <th class="text-left font-medium px-4 py-2 w-8">#</th>
+                  <th class="text-left font-medium px-4 py-2">Model</th>
+                  <th class="text-center font-medium px-4 py-2">Score</th>
+                  <th class="text-left font-medium px-4 py-2 hidden sm:table-cell">Shelf Life</th>
+                  <th class="text-left font-medium px-4 py-2 hidden md:table-cell">Recommendation</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {leaderboard.map((item: any, i: number) => (
+                  <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                    <td class="px-4 py-2 text-gray-600 font-mono">{i + 1}</td>
+                    <td class="px-4 py-2">
+                      <p class="text-gray-200 font-medium">{item.name}</p>
+                      <p class="text-[10px] text-gray-500">{item.author}</p>
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                      <span class={`font-mono font-semibold ${
+                        item.risk_score >= 70 ? 'text-danger' :
+                        item.risk_score >= 50 ? 'text-warning' :
+                        item.risk_score >= 35 ? 'text-electric' :
+                        'text-quantum'
+                      }`}>{Math.round(item.risk_score)}</span>
+                    </td>
+                    <td class="px-4 py-2 hidden sm:table-cell">
+                      <span class="font-mono text-gray-400">{item.shelf_life ? `${item.shelf_life} yr` : 'N/A'}</span>
+                    </td>
+                    <td class="px-4 py-2 hidden md:table-cell">
+                      <span class={`text-[11px] ${
+                        item.risk_score >= 70 ? 'text-danger' :
+                        item.risk_score >= 50 ? 'text-warning' :
+                        'text-gray-500'
+                      }`}>{item.recommendation || 'N/A'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div class="px-4 py-8 text-center text-xs text-gray-600">No HNDL assessments yet.</div>
+          )}
         </div>
       </div>
     </div>

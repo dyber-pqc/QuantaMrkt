@@ -10,6 +10,8 @@ declare namespace App {
         GITHUB_CLIENT_ID: string;
         GITHUB_CLIENT_SECRET: string;
         SESSION_SECRET: string;
+        DB: D1Database;
+        MANIFESTS: R2Bucket;
       };
     };
   }

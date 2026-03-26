@@ -1,80 +1,49 @@
 ---
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getModelBySlug } from '../../lib/db';
 
 const { slug } = Astro.params;
+const db = (Astro.locals as any).runtime?.env?.DB;
+const model = db ? await getModelBySlug(db, slug!) : null;
+if (!model) return Astro.redirect('/models');
 
-// Mock model data — in production this would come from an API
-const model = {
-  slug: 'meta-llama-Llama-3.1-70B-Instruct',
-  name: 'Llama-3.1-70B-Instruct',
-  author: 'meta-llama',
-  description: 'Llama 3.1 is a large language model optimized for instruction following and dialogue use cases. This 70B parameter model features a 128k context window and is trained with RLHF for safe, helpful responses.',
-  tags: ['Transformer', 'Text Generation', '70B', 'Chat', 'RLHF'],
-  verified: true,
-  algorithm: 'ML-DSA-87',
-  risk: 'CRITICAL',
-  riskScore: 82,
-  shelfLife: '12 years',
-  downloads: 2400000,
-  likes: 4821,
-  license: 'Llama 3.1 Community License',
-  framework: 'PyTorch 2.4',
-  parameters: '70B',
-  created: '2026-01-15',
-  lastVerified: '2026-03-18',
-  signerDid: 'did:web:meta.com:ml-signing:llama-team',
-  verifierDid: 'did:web:quantmrkt.com:verification:primary',
-  files: [
-    { name: 'model-00001-of-00030.safetensors', hash: 'a3f2b8c91d4e5f607a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f', size: '4.7 GB' },
-    { name: 'model-00002-of-00030.safetensors', hash: 'b4c3d9e02f5a6b718c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b', size: '4.7 GB' },
-    { name: 'model-00003-of-00030.safetensors', hash: 'c5d4e0f13a6b7c829d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c', size: '4.7 GB' },
-    { name: 'config.json', hash: 'd6e5f1a24b7c8d93ae0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d', size: '1.2 KB' },
-    { name: 'tokenizer.json', hash: 'e7f6a2b35c8d9e04bf1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e', size: '17.5 MB' },
-    { name: 'tokenizer_config.json', hash: 'f8a7b3c46d9e0f15ca2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f', size: '3.4 KB' },
-    { name: 'special_tokens_map.json', hash: '09b8c4d57e0f1a26db3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a', size: '0.6 KB' },
-    { name: 'generation_config.json', hash: '1a09d5e68f1a2b37ec4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b', size: '0.2 KB' },
-  ],
-  signatures: [
-    {
-      role: 'Creator',
-      signer: 'did:web:meta.com:ml-signing:llama-team',
-      algorithm: 'ML-DSA-87',
-      date: '2026-03-18T14:32:00Z',
-      fingerprint: 'QmX7a8b9c0d1e2f3k2',
-    },
-    {
-      role: 'Auditor',
-      signer: 'did:web:nist.gov:pqc-verification:models',
-      algorithm: 'ML-DSA-87',
-      date: '2026-03-18T14:33:45Z',
-      fingerprint: 'QmY8b9c0d1e2f3a4j5',
-    },
-    {
-      role: 'Registry',
-      signer: 'did:web:quantmrkt.com:verification:primary',
-      algorithm: 'ML-DSA-87',
-      date: '2026-03-18T14:35:12Z',
-      fingerprint: 'QmR9h8j4c0d1e2f3a4',
-    },
-  ],
-  modelCard: `## Intended Use
-Llama 3.1 70B Instruct is designed for assistant-like chat and instruction following. The model has been instruction-tuned and RLHF-aligned to be safe and helpful.
+const tags: string[] = (() => {
+  try { return JSON.parse(model.tags || '[]'); } catch { return []; }
+})();
 
-## Training Details
-- **Training data**: 15T tokens from publicly available sources
-- **Architecture**: Grouped-query attention, RoPE embeddings, 128k context
-- **Fine-tuning**: Supervised fine-tuning + RLHF with PPO
-- **Languages**: Primarily English, with multilingual capabilities
+const riskLevel = model.hndl?.risk_level || '';
+const riskScore = model.hndl?.risk_score ?? 0;
+const shelfLife = model.hndl?.shelf_life_years ? `${model.hndl.shelf_life_years} years` : 'N/A';
+const recommendation = model.hndl?.recommendation || '';
+const algorithm = model.signatures?.[0]?.algorithm || '';
 
-## Limitations
-- May produce factually incorrect information
-- Not suitable for safety-critical applications without human oversight
-- Performance varies across languages`,
-  recommendation: 'Weight files are vulnerable to harvest-now-decrypt-later attacks within projected shelf life. Migrate to quantum-safe distribution channels and verify all weight file integrity using PQC signatures before deployment.',
-};
+function riskBadgeClass(level: string): string {
+  switch (level.toUpperCase()) {
+    case 'CRITICAL': return 'badge-critical';
+    case 'HIGH': return 'badge-high';
+    case 'MEDIUM': return 'badge-medium';
+    default: return 'badge-low';
+  }
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1_000_000_000) return (bytes / 1_000_000_000).toFixed(1) + ' GB';
+  if (bytes >= 1_000_000) return (bytes / 1_000_000).toFixed(1) + ' MB';
+  if (bytes >= 1_000) return (bytes / 1_000).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+
+function sigRoleLabel(type: string | null): string {
+  switch (type) {
+    case 'creator': return 'Creator';
+    case 'auditor': return 'Auditor';
+    case 'registry': return 'Registry';
+    default: return type || 'Signer';
+  }
+}
 ---
 
-<MarketingLayout title={`${model.author}/${model.name}`} description={model.description}>
+<MarketingLayout title={`${model.author}/${model.name}`} description={model.description || ''}>
   <div class="mx-auto max-w-7xl px-6 py-8">
     <!-- Back link -->
     <a href="/models" class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors mb-4">
@@ -90,8 +59,8 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
             <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.352.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>
           <div>
-            <p class="text-sm font-semibold text-quantum mb-1">PQC-Verified with {model.algorithm}</p>
-            <p class="text-xs text-gray-400">All file hashes match the source. Signature chain includes creator, auditor, and registry verification. Verified on {model.lastVerified}.</p>
+            <p class="text-sm font-semibold text-quantum mb-1">PQC-Verified{algorithm ? ` with ${algorithm}` : ''}</p>
+            <p class="text-xs text-gray-400">All file hashes match the source. Signature chain includes {model.signatures.length} verification(s). Verified on {model.updated_at?.slice(0, 10) || 'N/A'}.</p>
             <a href="#signatures" class="text-xs text-quantum/80 hover:text-quantum mt-1 inline-block">View transparency log</a>
           </div>
         </div>
@@ -115,7 +84,7 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
       <div>
         <div class="flex items-center gap-3 mb-2">
           <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-gray-400">
-            {model.author[0].toUpperCase()}
+            {model.author?.[0]?.toUpperCase() || '?'}
           </div>
           <div>
             <h1 class="text-xl font-bold text-white">{model.author}<span class="text-gray-500">/</span>{model.name}</h1>
@@ -124,7 +93,7 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
         </div>
         <p class="text-sm text-gray-400 max-w-2xl mb-3">{model.description}</p>
         <div class="flex items-center gap-2 flex-wrap">
-          {model.tags.map((tag) => (
+          {tags.map((tag) => (
             <span class="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">{tag}</span>
           ))}
         </div>
@@ -132,11 +101,11 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
       <div class="flex items-center gap-3">
         <span class="inline-flex items-center gap-1 text-xs text-gray-500">
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-          {model.downloads.toLocaleString()}
+          {(model.downloads ?? 0).toLocaleString()}
         </span>
         <span class="inline-flex items-center gap-1 text-xs text-gray-500">
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-          {model.likes.toLocaleString()}
+          {(model.likes ?? 0).toLocaleString()}
         </span>
       </div>
     </div>
@@ -159,23 +128,13 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
           </div>
           <div class="px-5 py-4 prose prose-invert prose-sm max-w-none text-gray-300">
             <div class="space-y-3 text-xs leading-relaxed">
-              <h3 class="text-sm font-semibold text-white mt-0">Intended Use</h3>
-              <p class="text-gray-400">Llama 3.1 70B Instruct is designed for assistant-like chat and instruction following. The model has been instruction-tuned and RLHF-aligned to be safe and helpful.</p>
-
-              <h3 class="text-sm font-semibold text-white">Training Details</h3>
-              <ul class="text-gray-400 space-y-1 list-none pl-0">
-                <li><span class="text-gray-500">Training data:</span> 15T tokens from publicly available sources</li>
-                <li><span class="text-gray-500">Architecture:</span> Grouped-query attention, RoPE embeddings, 128k context</li>
-                <li><span class="text-gray-500">Fine-tuning:</span> Supervised fine-tuning + RLHF with PPO</li>
-                <li><span class="text-gray-500">Languages:</span> Primarily English, with multilingual capabilities</li>
-              </ul>
-
-              <h3 class="text-sm font-semibold text-white">Limitations</h3>
-              <ul class="text-gray-400 space-y-1 list-disc pl-4">
-                <li>May produce factually incorrect information</li>
-                <li>Not suitable for safety-critical applications without human oversight</li>
-                <li>Performance varies across languages</li>
-              </ul>
+              <p class="text-gray-400">{model.description || 'No model card available.'}</p>
+              {model.framework && (
+                <p class="text-gray-500"><span class="text-gray-400">Framework:</span> {model.framework}</p>
+              )}
+              {model.parameters && (
+                <p class="text-gray-500"><span class="text-gray-400">Parameters:</span> {model.parameters}</p>
+              )}
             </div>
           </div>
         </div>
@@ -186,30 +145,34 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
             <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">File Manifest</h2>
             <span class="text-xs text-gray-600">{model.files.length} files &middot; SHA3-256</span>
           </div>
-          <table class="w-full text-xs">
-            <thead>
-              <tr class="border-b border-white/5 text-gray-500">
-                <th class="text-left font-medium px-5 py-2">Filename</th>
-                <th class="text-left font-medium px-5 py-2 hidden md:table-cell">SHA3-256</th>
-                <th class="text-right font-medium px-5 py-2">Size</th>
-              </tr>
-            </thead>
-            <tbody>
-              {model.files.map((file, i) => (
-                <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-                  <td class="px-5 py-2">
-                    <span class="font-mono text-gray-300">{file.name}</span>
-                  </td>
-                  <td class="px-5 py-2 hidden md:table-cell">
-                    <span class="font-mono text-gray-600 text-[10px]">{file.hash.slice(0, 24)}...</span>
-                  </td>
-                  <td class="px-5 py-2 text-right">
-                    <span class="text-gray-500 whitespace-nowrap">{file.size}</span>
-                  </td>
+          {model.files.length > 0 ? (
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-white/5 text-gray-500">
+                  <th class="text-left font-medium px-5 py-2">Filename</th>
+                  <th class="text-left font-medium px-5 py-2 hidden md:table-cell">SHA3-256</th>
+                  <th class="text-right font-medium px-5 py-2">Size</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {model.files.map((file: any, i: number) => (
+                  <tr class={`border-b border-white/[0.03] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                    <td class="px-5 py-2">
+                      <span class="font-mono text-gray-300">{file.filename}</span>
+                    </td>
+                    <td class="px-5 py-2 hidden md:table-cell">
+                      <span class="font-mono text-gray-600 text-[10px]">{(file.sha3_256_hash || '').slice(0, 24)}...</span>
+                    </td>
+                    <td class="px-5 py-2 text-right">
+                      <span class="text-gray-500 whitespace-nowrap">{formatSize(file.size)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div class="px-5 py-8 text-center text-xs text-gray-600">No files in manifest.</div>
+          )}
         </div>
 
         <!-- Signatures -->
@@ -218,31 +181,35 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
             <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Signature Chain</h2>
           </div>
           <div class="p-5">
-            {model.signatures.map((sig, i) => (
-              <div class="flex items-start gap-3">
-                <div class="flex flex-col items-center">
-                  <div class={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
-                    i === 0 ? 'bg-electric/15 text-electric' :
-                    i === 1 ? 'bg-warning/15 text-warning' :
-                    'bg-quantum/15 text-quantum'
-                  }`}>
-                    {i + 1}
+            {model.signatures.length > 0 ? (
+              model.signatures.map((sig: any, i: number) => (
+                <div class="flex items-start gap-3">
+                  <div class="flex flex-col items-center">
+                    <div class={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold ${
+                      i === 0 ? 'bg-electric/15 text-electric' :
+                      i === 1 ? 'bg-warning/15 text-warning' :
+                      'bg-quantum/15 text-quantum'
+                    }`}>
+                      {i + 1}
+                    </div>
+                    {i < model.signatures.length - 1 && (
+                      <div class="w-px h-10 bg-white/10 my-1" />
+                    )}
                   </div>
-                  {i < model.signatures.length - 1 && (
-                    <div class="w-px h-10 bg-white/10 my-1" />
-                  )}
-                </div>
-                <div class={`flex-1 ${i < model.signatures.length - 1 ? 'pb-4' : ''}`}>
-                  <div class="flex items-center gap-2 mb-0.5">
-                    <span class="text-xs font-semibold text-gray-200">{sig.role}</span>
-                    <span class="font-mono text-[11px] text-gray-500">{sig.algorithm}</span>
-                    <span class="text-[11px] text-gray-600">{new Date(sig.date).toLocaleString()}</span>
+                  <div class={`flex-1 ${i < model.signatures.length - 1 ? 'pb-4' : ''}`}>
+                    <div class="flex items-center gap-2 mb-0.5">
+                      <span class="text-xs font-semibold text-gray-200">{sigRoleLabel(sig.attestation_type)}</span>
+                      <span class="font-mono text-[11px] text-gray-500">{sig.algorithm}</span>
+                      <span class="text-[11px] text-gray-600">{sig.signed_at ? new Date(sig.signed_at).toLocaleString() : ''}</span>
+                    </div>
+                    <p class="font-mono text-[11px] text-gray-500">{sig.signer_did}</p>
+                    <p class="text-[11px] text-gray-600 mt-0.5">Signature: <span class="font-mono">{(sig.signature_hex || '').slice(0, 20)}...</span></p>
                   </div>
-                  <p class="font-mono text-[11px] text-gray-500">{sig.signer}</p>
-                  <p class="text-[11px] text-gray-600 mt-0.5">Fingerprint: <span class="font-mono">{sig.fingerprint}</span></p>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p class="text-xs text-gray-600 text-center py-4">No signatures recorded.</p>
+            )}
           </div>
         </div>
 
@@ -252,39 +219,47 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
             <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk Assessment</h2>
           </div>
           <div class="p-5">
-            <div class="flex items-center gap-6 mb-4">
-              <!-- Score gauge -->
-              <div class="relative h-24 w-24 flex-shrink-0">
-                <svg class="h-24 w-24 -rotate-90" viewBox="0 0 96 96">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" stroke-width="6" class="text-white/5" />
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" stroke-width="6"
-                    stroke-dasharray={`${(model.riskScore / 100) * 251.3} 251.3`}
-                    class="text-danger" stroke-linecap="round" />
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span class="text-2xl font-bold text-white font-mono">{model.riskScore}</span>
-                  <span class="text-[10px] text-gray-500">/ 100</span>
+            {model.hndl ? (
+              <>
+                <div class="flex items-center gap-6 mb-4">
+                  {/* Score gauge */}
+                  <div class="relative h-24 w-24 flex-shrink-0">
+                    <svg class="h-24 w-24 -rotate-90" viewBox="0 0 96 96">
+                      <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" stroke-width="6" class="text-white/5" />
+                      <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" stroke-width="6"
+                        stroke-dasharray={`${(riskScore / 100) * 251.3} 251.3`}
+                        class="text-danger" stroke-linecap="round" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <span class="text-2xl font-bold text-white font-mono">{Math.round(riskScore)}</span>
+                      <span class="text-[10px] text-gray-500">/ 100</span>
+                    </div>
+                  </div>
+                  <div class="space-y-2 text-xs">
+                    <div class="flex items-center justify-between gap-8">
+                      <span class="text-gray-500">Risk Level</span>
+                      <span class={riskBadgeClass(riskLevel)}>{riskLevel}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-8">
+                      <span class="text-gray-500">Quantum Shelf Life</span>
+                      <span class="font-mono text-gray-300">{shelfLife}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-8">
+                      <span class="text-gray-500">PQC Status</span>
+                      <span class={`text-xs ${model.verified ? 'text-quantum' : 'text-gray-500'}`}>{model.verified ? 'Verified' : 'Unverified'}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="space-y-2 text-xs">
-                <div class="flex items-center justify-between gap-8">
-                  <span class="text-gray-500">Risk Level</span>
-                  <span class="badge-critical">{model.risk}</span>
-                </div>
-                <div class="flex items-center justify-between gap-8">
-                  <span class="text-gray-500">Quantum Shelf Life</span>
-                  <span class="font-mono text-gray-300">{model.shelfLife}</span>
-                </div>
-                <div class="flex items-center justify-between gap-8">
-                  <span class="text-gray-500">PQC Status</span>
-                  <span class="text-quantum text-xs">Verified</span>
-                </div>
-              </div>
-            </div>
-            <div class="rounded-lg border border-warning/10 bg-warning/[0.03] p-4">
-              <h3 class="text-xs font-semibold text-warning mb-1">Advisory</h3>
-              <p class="text-xs text-gray-400 leading-relaxed">{model.recommendation}</p>
-            </div>
+                {recommendation && (
+                  <div class="rounded-lg border border-warning/10 bg-warning/[0.03] p-4">
+                    <h3 class="text-xs font-semibold text-warning mb-1">Advisory</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed">{recommendation}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p class="text-xs text-gray-600 text-center py-4">No HNDL assessment available for this model.</p>
+            )}
           </div>
         </div>
       </div>
@@ -311,29 +286,35 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Model Info</h3>
           </div>
           <div class="divide-y divide-white/[0.03]">
-            <div class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-[11px] text-gray-500">License</span>
-              <span class="text-[11px] text-gray-300 text-right max-w-[140px] truncate">{model.license}</span>
-            </div>
-            <div class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-[11px] text-gray-500">Framework</span>
-              <span class="text-[11px] text-gray-300">{model.framework}</span>
-            </div>
-            <div class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-[11px] text-gray-500">Parameters</span>
-              <span class="font-mono text-[11px] text-gray-300">{model.parameters}</span>
-            </div>
+            {model.license && (
+              <div class="flex items-center justify-between px-4 py-2.5">
+                <span class="text-[11px] text-gray-500">License</span>
+                <span class="text-[11px] text-gray-300 text-right max-w-[140px] truncate">{model.license}</span>
+              </div>
+            )}
+            {model.framework && (
+              <div class="flex items-center justify-between px-4 py-2.5">
+                <span class="text-[11px] text-gray-500">Framework</span>
+                <span class="text-[11px] text-gray-300">{model.framework}</span>
+              </div>
+            )}
+            {model.parameters && (
+              <div class="flex items-center justify-between px-4 py-2.5">
+                <span class="text-[11px] text-gray-500">Parameters</span>
+                <span class="font-mono text-[11px] text-gray-300">{model.parameters}</span>
+              </div>
+            )}
             <div class="flex items-center justify-between px-4 py-2.5">
               <span class="text-[11px] text-gray-500">Created</span>
-              <span class="text-[11px] text-gray-300">{model.created}</span>
+              <span class="text-[11px] text-gray-300">{model.created_at?.slice(0, 10) || 'N/A'}</span>
             </div>
             <div class="flex items-center justify-between px-4 py-2.5">
               <span class="text-[11px] text-gray-500">Downloads</span>
-              <span class="font-mono text-[11px] text-gray-300">{model.downloads.toLocaleString()}</span>
+              <span class="font-mono text-[11px] text-gray-300">{(model.downloads ?? 0).toLocaleString()}</span>
             </div>
             <div class="flex items-center justify-between px-4 py-2.5">
               <span class="text-[11px] text-gray-500">Likes</span>
-              <span class="font-mono text-[11px] text-gray-300">{model.likes.toLocaleString()}</span>
+              <span class="font-mono text-[11px] text-gray-300">{(model.likes ?? 0).toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -342,12 +323,9 @@ Llama 3.1 70B Instruct is designed for assistant-like chat and instruction follo
         <div class="rounded-xl border border-white/5 bg-navy-800 p-4">
           <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Tags</h3>
           <div class="flex flex-wrap gap-1.5">
-            {model.tags.map((tag) => (
+            {tags.map((tag) => (
               <span class="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-gray-500 hover:bg-white/10 hover:text-gray-300 transition-colors cursor-pointer">{tag}</span>
             ))}
-            <span class="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">English</span>
-            <span class="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">PyTorch</span>
-            <span class="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">Safetensors</span>
           </div>
         </div>
       </div>

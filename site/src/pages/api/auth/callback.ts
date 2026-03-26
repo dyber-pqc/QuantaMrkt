@@ -5,6 +5,7 @@ import {
   createSession,
   buildSessionCookie,
 } from '../../../lib/auth';
+import { upsertUser } from '../../../lib/db';
 
 export const GET: APIRoute = async ({ url, locals }) => {
   try {
@@ -28,6 +29,18 @@ export const GET: APIRoute = async ({ url, locals }) => {
 
     // Fetch GitHub user profile
     const user = await getGitHubUser(accessToken);
+
+    // Upsert user into D1
+    const db = (locals as any).runtime?.env?.DB as D1Database | undefined;
+    if (db) {
+      await upsertUser(db, {
+        github_id: user.id,
+        login: user.login,
+        name: user.name,
+        email: user.email,
+        avatar_url: user.avatar_url,
+      });
+    }
 
     // Create signed session cookie
     const sessionValue = await createSession(user, sessionSecret);

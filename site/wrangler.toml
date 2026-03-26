@@ -18,6 +18,15 @@ directory = "./dist"
 PUBLIC_SITE_URL = "https://quantamrkt.com"
 GITHUB_CLIENT_ID = "Ov23liuaDLn9Xtgh2uCO"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "quantmrkt-db"
+database_id = "d4d02fc6-3c5c-49f6-a756-ff8480adbcdb"
+
+[[r2_buckets]]
+binding = "MANIFESTS"
+bucket_name = "quantmrkt-manifests"
+
 # Secrets (set via `wrangler secret put`):
 # GITHUB_CLIENT_SECRET
 # SESSION_SECRET

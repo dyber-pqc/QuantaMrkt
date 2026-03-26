@@ -1,80 +1,25 @@
 ---
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAgents } from '../../lib/db';
 
-const agents = [
-  {
-    name: 'finance-copilot',
-    org: 'Acme Corp',
-    did: 'did:web:acme.corp:agents:finance-copilot',
-    algorithm: 'ML-DSA-87',
-    capabilities: ['Financial Analysis', 'Risk Assessment', 'Compliance Audit'],
-    status: 'active',
-    registered: '2026-03-12',
-  },
-  {
-    name: 'code-reviewer',
-    org: 'DevSecOps Inc',
-    did: 'did:web:devsecops.io:agents:code-reviewer',
-    algorithm: 'ML-DSA-65',
-    capabilities: ['Code Review', 'Vulnerability Scanning', 'PQC Migration'],
-    status: 'active',
-    registered: '2026-03-10',
-  },
-  {
-    name: 'data-pipeline',
-    org: 'Globex Systems',
-    did: 'did:web:globex.com:agents:data-pipeline',
-    algorithm: 'ML-DSA-87',
-    capabilities: ['ETL Processing', 'Data Validation', 'Schema Migration'],
-    status: 'active',
-    registered: '2026-03-08',
-  },
-  {
-    name: 'threat-detector',
-    org: 'CyberShield AI',
-    did: 'did:web:cybershield.ai:agents:threat-detector',
-    algorithm: 'ML-DSA-87',
-    capabilities: ['Threat Detection', 'Incident Response', 'Network Analysis'],
-    status: 'active',
-    registered: '2026-03-05',
-  },
-  {
-    name: 'model-validator',
-    org: 'QuantaMrkt',
-    did: 'did:web:quantmrkt.com:agents:model-validator',
-    algorithm: 'ML-DSA-87',
-    capabilities: ['Model Verification', 'Signature Validation', 'Hash Integrity'],
-    status: 'active',
-    registered: '2026-02-28',
-  },
-  {
-    name: 'doc-summarizer',
-    org: 'LegalTech Co',
-    did: 'did:web:legaltech.co:agents:doc-summarizer',
-    algorithm: 'ML-DSA-65',
-    capabilities: ['Document Analysis', 'Summarization', 'Entity Extraction'],
-    status: 'active',
-    registered: '2026-02-25',
-  },
-  {
-    name: 'supply-chain-monitor',
-    org: 'LogiChain',
-    did: 'did:web:logichain.io:agents:supply-chain-monitor',
-    algorithm: 'ML-DSA-44',
-    capabilities: ['Supply Chain Monitoring', 'Anomaly Detection', 'Provenance Tracking'],
-    status: 'suspended',
-    registered: '2026-02-20',
-  },
-  {
-    name: 'research-assistant',
-    org: 'BioGenomics',
-    did: 'did:web:biogenomics.org:agents:research-assistant',
-    algorithm: 'ML-DSA-65',
-    capabilities: ['Literature Search', 'Data Analysis', 'Report Generation'],
-    status: 'active',
-    registered: '2026-02-15',
-  },
-];
+const db = (Astro.locals as any).runtime?.env?.DB;
+const agents: any[] = db ? await getAgents(db) : [];
+
+function parseCapabilities(json: string | null): string[] {
+  if (!json) return [];
+  try { return JSON.parse(json); } catch { return []; }
+}
+
+const activeCount = agents.filter((a: any) => a.status === 'active').length;
+const orgSet = new Set(agents.map((a: any) => {
+  // Extract org from the name (e.g. "acme/finance-copilot" -> "acme") or from the DID
+  const parts = a.name?.split('/');
+  if (parts && parts.length > 1) return parts[0];
+  // Fallback: extract from DID
+  const didParts = a.did?.split(':');
+  return didParts?.[2] || 'unknown';
+}));
+const algSet = new Set(agents.map((a: any) => a.algorithm));
 ---
 
 <MarketingLayout title="Agent Directory" description="Browse PQC-authenticated AI agents in the quantum-safe registry">
@@ -106,74 +51,84 @@ const agents = [
         <p class="text-xs text-gray-500 mt-1">Registered Agents</p>
       </div>
       <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
-        <p class="text-lg font-semibold text-white font-mono leading-none">{agents.filter(a => a.status === 'active').length}</p>
+        <p class="text-lg font-semibold text-white font-mono leading-none">{activeCount}</p>
         <p class="text-xs text-gray-500 mt-1">Active</p>
       </div>
       <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
-        <p class="text-lg font-semibold text-white font-mono leading-none">{new Set(agents.map(a => a.org)).size}</p>
+        <p class="text-lg font-semibold text-white font-mono leading-none">{orgSet.size}</p>
         <p class="text-xs text-gray-500 mt-1">Organizations</p>
       </div>
       <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
-        <p class="text-lg font-semibold text-white font-mono leading-none">3</p>
+        <p class="text-lg font-semibold text-white font-mono leading-none">{algSet.size}</p>
         <p class="text-xs text-gray-500 mt-1">Algorithms</p>
       </div>
     </div>
 
     <!-- Agent List -->
-    <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-white/5 text-xs text-gray-500">
-            <th class="text-left font-medium px-5 py-3">Agent</th>
-            <th class="text-left font-medium px-5 py-3 hidden lg:table-cell">DID</th>
-            <th class="text-left font-medium px-5 py-3 hidden md:table-cell">Algorithm</th>
-            <th class="text-left font-medium px-5 py-3 hidden sm:table-cell">Capabilities</th>
-            <th class="text-center font-medium px-5 py-3">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {agents.map((agent, i) => (
-            <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-              <td class="px-5 py-3">
-                <div>
-                  <p class="text-sm font-medium text-gray-200">{agent.name}</p>
-                  <p class="text-xs text-gray-500">{agent.org}</p>
-                </div>
-              </td>
-              <td class="px-5 py-3 hidden lg:table-cell">
-                <span class="font-mono text-[11px] text-gray-500">{agent.did.slice(0, 32)}...</span>
-              </td>
-              <td class="px-5 py-3 hidden md:table-cell">
-                <span class="font-mono text-xs text-gray-400">{agent.algorithm}</span>
-              </td>
-              <td class="px-5 py-3 hidden sm:table-cell">
-                <div class="flex flex-wrap gap-1">
-                  {agent.capabilities.slice(0, 2).map((cap) => (
-                    <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">{cap}</span>
-                  ))}
-                  {agent.capabilities.length > 2 && (
-                    <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">+{agent.capabilities.length - 2}</span>
-                  )}
-                </div>
-              </td>
-              <td class="px-5 py-3 text-center">
-                {agent.status === 'active' ? (
-                  <span class="inline-flex items-center gap-1 text-[11px] text-quantum">
-                    <span class="h-1.5 w-1.5 rounded-full bg-quantum" />
-                    Active
-                  </span>
-                ) : (
-                  <span class="inline-flex items-center gap-1 text-[11px] text-warning">
-                    <span class="h-1.5 w-1.5 rounded-full bg-warning" />
-                    Suspended
-                  </span>
-                )}
-              </td>
+    {agents.length > 0 ? (
+      <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/5 text-xs text-gray-500">
+              <th class="text-left font-medium px-5 py-3">Agent</th>
+              <th class="text-left font-medium px-5 py-3 hidden lg:table-cell">DID</th>
+              <th class="text-left font-medium px-5 py-3 hidden md:table-cell">Algorithm</th>
+              <th class="text-left font-medium px-5 py-3 hidden sm:table-cell">Capabilities</th>
+              <th class="text-center font-medium px-5 py-3">Status</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {agents.map((agent: any, i: number) => {
+              const caps = parseCapabilities(agent.capabilities_json);
+              return (
+                <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <td class="px-5 py-3">
+                    <div>
+                      <p class="text-sm font-medium text-gray-200">{agent.name}</p>
+                      <p class="text-xs text-gray-500">{agent.created_at?.slice(0, 10)}</p>
+                    </div>
+                  </td>
+                  <td class="px-5 py-3 hidden lg:table-cell">
+                    <span class="font-mono text-[11px] text-gray-500">{(agent.did || '').length > 32 ? (agent.did || '').slice(0, 32) + '...' : agent.did}</span>
+                  </td>
+                  <td class="px-5 py-3 hidden md:table-cell">
+                    <span class="font-mono text-xs text-gray-400">{agent.algorithm}</span>
+                  </td>
+                  <td class="px-5 py-3 hidden sm:table-cell">
+                    <div class="flex flex-wrap gap-1">
+                      {caps.slice(0, 2).map((cap: string) => (
+                        <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">{cap}</span>
+                      ))}
+                      {caps.length > 2 && (
+                        <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">+{caps.length - 2}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td class="px-5 py-3 text-center">
+                    {agent.status === 'active' ? (
+                      <span class="inline-flex items-center gap-1 text-[11px] text-quantum">
+                        <span class="h-1.5 w-1.5 rounded-full bg-quantum" />
+                        Active
+                      </span>
+                    ) : (
+                      <span class="inline-flex items-center gap-1 text-[11px] text-warning">
+                        <span class="h-1.5 w-1.5 rounded-full bg-warning" />
+                        {agent.status === 'revoked' ? 'Revoked' : 'Suspended'}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div class="rounded-xl border border-white/5 bg-navy-800 px-5 py-16 text-center">
+        <p class="text-sm text-gray-400 mb-1">No agents registered yet</p>
+        <p class="text-xs text-gray-600">Agents will appear here once registered in the directory.</p>
+      </div>
+    )}
 
     <div class="mt-6 flex items-center justify-between text-xs text-gray-500">
       <span>Showing {agents.length} agents</span>
