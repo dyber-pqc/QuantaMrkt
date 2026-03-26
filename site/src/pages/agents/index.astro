@@ -4,30 +4,55 @@ import { getAgents } from '../../lib/db';
 
 const db = (Astro.locals as any).runtime?.env?.DB;
 const q = (Astro.url.searchParams.get('q') || '').toLowerCase();
+const filterStatus = Astro.url.searchParams.get('status') || '';
+const filterAlgo = Astro.url.searchParams.get('algo') || '';
 const allAgents: any[] = db ? await getAgents(db) : [];
-const agents = q
-  ? allAgents.filter((a: any) =>
-      (a.name || '').toLowerCase().includes(q) ||
-      (a.did || '').toLowerCase().includes(q) ||
-      (a.algorithm || '').toLowerCase().includes(q)
-    )
-  : allAgents;
+
+// Apply filters
+let agents = allAgents;
+if (q) {
+  agents = agents.filter((a: any) =>
+    (a.name || '').toLowerCase().includes(q) ||
+    (a.did || '').toLowerCase().includes(q) ||
+    (a.algorithm || '').toLowerCase().includes(q)
+  );
+}
+if (filterStatus) {
+  agents = agents.filter((a: any) => a.status === filterStatus);
+}
+if (filterAlgo) {
+  agents = agents.filter((a: any) => a.algorithm === filterAlgo);
+}
 
 function parseCapabilities(json: string | null): string[] {
   if (!json) return [];
   try { return JSON.parse(json); } catch { return []; }
 }
 
-const activeCount = agents.filter((a: any) => a.status === 'active').length;
-const orgSet = new Set(agents.map((a: any) => {
-  // Extract org from the name (e.g. "acme/finance-copilot" -> "acme") or from the DID
-  const parts = a.name?.split('/');
-  if (parts && parts.length > 1) return parts[0];
-  // Fallback: extract from DID
-  const didParts = a.did?.split(':');
-  return didParts?.[2] || 'unknown';
-}));
-const algSet = new Set(agents.map((a: any) => a.algorithm));
+const totalCount = allAgents.length;
+const activeCount = allAgents.filter((a: any) => a.status === 'active').length;
+const suspendedCount = allAgents.filter((a: any) => a.status === 'suspended' || a.status === 'revoked').length;
+const algCounts: Record<string, number> = {};
+for (const a of allAgents) {
+  algCounts[a.algorithm] = (algCounts[a.algorithm] || 0) + 1;
+}
+
+// Get activity counts per agent from transparency_log
+let activityCounts: Record<string, { count: number; last_active: string | null }> = {};
+if (db) {
+  try {
+    const actResult = await db
+      .prepare(`SELECT actor_did, COUNT(*) as count, MAX(timestamp) as last_active FROM transparency_log WHERE target_type = 'agent' GROUP BY actor_did`)
+      .all();
+    for (const row of ((actResult?.results || []) as any[])) {
+      activityCounts[row.actor_did] = { count: row.count, last_active: row.last_active };
+    }
+  } catch {}
+}
+
+// Check if user is logged in
+const sessionCookie = Astro.cookies.get('session')?.value;
+const isLoggedIn = !!sessionCookie;
 ---
 
 <MarketingLayout title="Agent Directory" description="Browse PQC-authenticated AI agents in the quantum-safe registry">
@@ -59,21 +84,46 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
     <!-- Stats bar -->
     <div class="flex items-center gap-px rounded-lg overflow-hidden border border-white/5 mb-6">
       <div class="flex-1 bg-navy-800 px-4 py-3">
-        <p class="text-lg font-semibold text-white font-mono leading-none">{agents.length}</p>
-        <p class="text-xs text-gray-500 mt-1">Registered Agents</p>
+        <p class="text-lg font-semibold text-white font-mono leading-none">{totalCount}</p>
+        <p class="text-xs text-gray-500 mt-1">Total Agents</p>
       </div>
       <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
-        <p class="text-lg font-semibold text-white font-mono leading-none">{activeCount}</p>
+        <p class="text-lg font-semibold text-green-400 font-mono leading-none">{activeCount}</p>
         <p class="text-xs text-gray-500 mt-1">Active</p>
       </div>
       <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
-        <p class="text-lg font-semibold text-white font-mono leading-none">{orgSet.size}</p>
-        <p class="text-xs text-gray-500 mt-1">Organizations</p>
+        <p class="text-lg font-semibold text-yellow-400 font-mono leading-none">{suspendedCount}</p>
+        <p class="text-xs text-gray-500 mt-1">Suspended/Revoked</p>
       </div>
       <div class="flex-1 bg-navy-800 px-4 py-3 border-l border-white/5">
-        <p class="text-lg font-semibold text-white font-mono leading-none">{algSet.size}</p>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          {Object.entries(algCounts).map(([algo, count]) => (
+            <span class="inline-flex items-center rounded bg-electric/10 border border-electric/20 px-1.5 py-0.5 text-[10px] font-mono text-electric">
+              {algo} <span class="text-gray-500 ml-1">({count})</span>
+            </span>
+          ))}
+        </div>
         <p class="text-xs text-gray-500 mt-1">Algorithms</p>
       </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="flex items-center gap-2 mb-6 flex-wrap">
+      <a href="/agents" class:list={['rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border', !filterStatus && !filterAlgo ? 'bg-electric/10 text-electric border-electric/20' : 'bg-navy-800 text-gray-400 border-white/5 hover:border-white/10']}>
+        All
+      </a>
+      <a href="/agents?status=active" class:list={['rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border', filterStatus === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-navy-800 text-gray-400 border-white/5 hover:border-white/10']}>
+        Active
+      </a>
+      <a href="/agents?status=suspended" class:list={['rounded-lg px-3 py-1.5 text-xs font-medium transition-colors border', filterStatus === 'suspended' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-navy-800 text-gray-400 border-white/5 hover:border-white/10']}>
+        Suspended
+      </a>
+      <span class="text-white/10 mx-1">|</span>
+      {['ML-DSA-44', 'ML-DSA-65', 'ML-DSA-87'].map(algo => (
+        <a href={`/agents?algo=${algo}`} class:list={['rounded-lg px-3 py-1.5 text-xs font-mono font-medium transition-colors border', filterAlgo === algo ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-navy-800 text-gray-400 border-white/5 hover:border-white/10']}>
+          {algo}
+        </a>
+      ))}
     </div>
 
     <!-- Agent List -->
@@ -86,12 +136,15 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
               <th class="text-left font-medium px-5 py-3 hidden lg:table-cell">DID</th>
               <th class="text-left font-medium px-5 py-3 hidden md:table-cell">Algorithm</th>
               <th class="text-left font-medium px-5 py-3 hidden sm:table-cell">Capabilities</th>
+              <th class="text-center font-medium px-5 py-3 hidden md:table-cell">Actions</th>
+              <th class="text-center font-medium px-5 py-3 hidden sm:table-cell">Last Active</th>
               <th class="text-center font-medium px-5 py-3">Status</th>
             </tr>
           </thead>
           <tbody>
             {agents.map((agent: any, i: number) => {
               const caps = parseCapabilities(agent.capabilities_json);
+              const activity = activityCounts[agent.did] || { count: 0, last_active: null };
               return (
                 <tr class={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`} onclick={`window.location='/agents/${agent.id}'`}>
                   <td class="px-5 py-3">
@@ -104,7 +157,7 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
                     <span class="font-mono text-[11px] text-gray-500">{(agent.did || '').length > 32 ? (agent.did || '').slice(0, 32) + '...' : agent.did}</span>
                   </td>
                   <td class="px-5 py-3 hidden md:table-cell">
-                    <span class="font-mono text-xs text-gray-400">{agent.algorithm}</span>
+                    <span class="inline-flex rounded bg-electric/10 border border-electric/20 px-1.5 py-0.5 font-mono text-[11px] text-electric">{agent.algorithm}</span>
                   </td>
                   <td class="px-5 py-3 hidden sm:table-cell">
                     <div class="flex flex-wrap gap-1">
@@ -115,6 +168,12 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
                         <span class="inline-flex rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500">+{caps.length - 2}</span>
                       )}
                     </div>
+                  </td>
+                  <td class="px-5 py-3 text-center hidden md:table-cell">
+                    <span class="font-mono text-xs text-gray-400">{activity.count}</span>
+                  </td>
+                  <td class="px-5 py-3 text-center hidden sm:table-cell">
+                    <span class="text-[11px] text-gray-500">{activity.last_active ? activity.last_active.slice(0, 10) : '--'}</span>
                   </td>
                   <td class="px-5 py-3 text-center">
                     {agent.status === 'active' ? (
@@ -137,16 +196,124 @@ const algSet = new Set(agents.map((a: any) => a.algorithm));
       </div>
     ) : (
       <div class="rounded-xl border border-white/5 bg-navy-800 px-5 py-16 text-center">
-        <p class="text-sm text-gray-400 mb-1">No agents registered yet</p>
-        <p class="text-xs text-gray-600">Agents will appear here once registered in the directory.</p>
+        <p class="text-sm text-gray-400 mb-1">No agents found</p>
+        <p class="text-xs text-gray-600">{q || filterStatus || filterAlgo ? 'Try adjusting your filters.' : 'Agents will appear here once registered in the directory.'}</p>
       </div>
     )}
 
     <div class="mt-6 flex items-center justify-between text-xs text-gray-500">
-      <span>Showing {agents.length} agents</span>
-      <a href="/dashboard/agents" class="inline-flex items-center gap-1.5 rounded-md bg-electric/15 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/25 transition-colors">
-        Register Your Agent
-      </a>
+      <span>Showing {agents.length} of {totalCount} agents</span>
+    </div>
+
+    <!-- Register Agent Form -->
+    <div class="mt-10 rounded-xl border border-white/5 bg-navy-800 overflow-hidden" id="register-section">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-white">Register New Agent</h2>
+        <p class="text-[11px] text-gray-500 mt-0.5">Register a PQC-authenticated agent in the directory</p>
+      </div>
+      {isLoggedIn ? (
+        <form id="register-agent-form" class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5" for="agent-name">Name</label>
+              <input
+                type="text"
+                id="agent-name"
+                name="name"
+                placeholder="org/agent-name"
+                required
+                class="w-full rounded-lg border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1.5" for="agent-algo">Algorithm</label>
+              <select
+                id="agent-algo"
+                name="algorithm"
+                required
+                class="w-full rounded-lg border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+              >
+                <option value="ML-DSA-44">ML-DSA-44</option>
+                <option value="ML-DSA-65" selected>ML-DSA-65</option>
+                <option value="ML-DSA-87">ML-DSA-87</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs text-gray-400 mb-1.5" for="agent-caps">Capabilities (comma-separated)</label>
+              <input
+                type="text"
+                id="agent-caps"
+                name="capabilities"
+                placeholder="code-review, vulnerability-scan, model-audit"
+                class="w-full rounded-lg border border-white/10 bg-navy-900 px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+              />
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              type="submit"
+              id="register-btn"
+              class="rounded-lg bg-electric/10 border border-electric/20 px-4 py-2 text-xs font-medium text-electric hover:bg-electric/20 transition-colors"
+            >
+              Register Agent
+            </button>
+            <span id="register-status" class="text-xs text-gray-500 hidden"></span>
+          </div>
+        </form>
+      ) : (
+        <div class="p-6 text-center">
+          <p class="text-sm text-gray-400 mb-3">Sign in to register an agent</p>
+          <a href="/api/auth/login" class="inline-flex rounded-lg bg-electric/10 border border-electric/20 px-4 py-2 text-xs font-medium text-electric hover:bg-electric/20 transition-colors">
+            Sign In with GitHub
+          </a>
+        </div>
+      )}
     </div>
   </div>
+
+  <script>
+    const form = document.getElementById('register-agent-form') as HTMLFormElement | null;
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('register-btn') as HTMLButtonElement;
+        const statusEl = document.getElementById('register-status')!;
+        btn.disabled = true;
+        btn.textContent = 'Registering...';
+        statusEl.classList.remove('hidden');
+        statusEl.textContent = '';
+
+        const name = (document.getElementById('agent-name') as HTMLInputElement).value.trim();
+        const algorithm = (document.getElementById('agent-algo') as unknown as HTMLSelectElement).value;
+        const capsInput = (document.getElementById('agent-caps') as HTMLInputElement).value.trim();
+        const capabilities = capsInput ? capsInput.split(',').map(c => c.trim()).filter(Boolean) : [];
+
+        // Auto-generate DID from name
+        const did = `did:quantamrkt:agent:${name.replace(/\//g, ':').replace(/[^a-zA-Z0-9:-]/g, '')}`;
+
+        try {
+          const res = await fetch('/api/agents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, did, algorithm, capabilities }),
+          });
+          const data: any = await res.json();
+          if (res.ok) {
+            statusEl.className = 'text-xs text-green-400';
+            statusEl.textContent = `Agent registered! Redirecting...`;
+            setTimeout(() => { window.location.href = `/agents/${data.id}`; }, 1000);
+          } else {
+            statusEl.className = 'text-xs text-red-400';
+            statusEl.textContent = data.error || 'Registration failed.';
+          }
+        } catch {
+          statusEl.className = 'text-xs text-red-400';
+          statusEl.textContent = 'Registration failed. Please try again.';
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Register Agent';
+      });
+    }
+  </script>
 </MarketingLayout>

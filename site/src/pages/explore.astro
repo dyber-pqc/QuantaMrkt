@@ -8,6 +8,72 @@ const trending = db ? await getTrendingModels(db, 5) : [];
 const recent = db ? await getRecentVerifications(db, 10) : [];
 const leaderboard = db ? await getHndlLeaderboard(db, 10) : [];
 
+// Live stats from D1
+let sigCount = 0;
+let blockCount = 0;
+let algoDist: { algorithm: string; count: number }[] = [];
+let catCounts: { category: string; count: number }[] = [];
+let riskDist: { risk_level: string; count: number }[] = [];
+let totalModels = 0;
+let totalAgents = 0;
+let totalDatasets = 0;
+let totalTools = 0;
+let recentSubmissions: any[] = [];
+let totalFilesVerified = 0;
+
+if (db) {
+  try {
+    // Total signatures
+    const sc = await db.prepare('SELECT COUNT(*) as count FROM signatures').first();
+    sigCount = (sc as any)?.count ?? 0;
+
+    // Algorithm distribution
+    const ad = await db.prepare('SELECT algorithm, COUNT(*) as count FROM signatures GROUP BY algorithm').all();
+    algoDist = (ad?.results ?? []) as any[];
+
+    // Category counts
+    const cc = await db.prepare('SELECT category, COUNT(*) as count FROM models GROUP BY category').all();
+    catCounts = (cc?.results ?? []) as any[];
+
+    // Risk distribution
+    const rd = await db.prepare('SELECT risk_level, COUNT(*) as count FROM hndl_assessments GROUP BY risk_level').all();
+    riskDist = (rd?.results ?? []) as any[];
+
+    // Block count
+    const bc = await db.prepare('SELECT COUNT(*) as count FROM chain_blocks').first();
+    blockCount = (bc as any)?.count ?? 0;
+
+    // Category breakdowns
+    totalModels = catCounts.reduce((sum, c) => sum + c.count, 0);
+    const agentCount = await db.prepare('SELECT COUNT(*) as count FROM agents').first();
+    totalAgents = (agentCount as any)?.count ?? 0;
+
+    // Datasets and tools are model categories
+    totalDatasets = catCounts.find(c => c.category === 'dataset')?.count ?? 0;
+    totalTools = catCounts.find(c => c.category === 'tool')?.count ?? 0;
+
+    // Total files verified
+    const fv = await db.prepare('SELECT COUNT(*) as count FROM model_files').first();
+    totalFilesVerified = (fv as any)?.count ?? 0;
+
+    // Recent submissions from transparency log
+    const rs = await db.prepare(
+      `SELECT action, target_type, target_id, timestamp, metadata
+       FROM transparency_log
+       WHERE action IN ('model:submitted', 'model:created', 'manifest:pushed')
+       ORDER BY timestamp DESC
+       LIMIT 5`
+    ).all();
+    recentSubmissions = (rs?.results ?? []) as any[];
+  } catch (e) {
+    // Graceful degradation
+  }
+}
+
+// Check if user is logged in
+const sessionCookie = Astro.cookies.get('session')?.value;
+const isLoggedIn = !!sessionCookie;
+
 function formatDownloads(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
@@ -24,6 +90,26 @@ function riskBadgeClass(level: string | null | undefined): string {
   }
 }
 
+function riskColor(level: string): string {
+  switch (level?.toUpperCase()) {
+    case 'CRITICAL': return 'bg-red-500';
+    case 'HIGH': return 'bg-orange-500';
+    case 'MEDIUM': return 'bg-yellow-500';
+    case 'LOW': return 'bg-green-500';
+    default: return 'bg-gray-500';
+  }
+}
+
+function riskTextColor(level: string): string {
+  switch (level?.toUpperCase()) {
+    case 'CRITICAL': return 'text-red-400';
+    case 'HIGH': return 'text-orange-400';
+    case 'MEDIUM': return 'text-yellow-400';
+    case 'LOW': return 'text-green-400';
+    default: return 'text-gray-400';
+  }
+}
+
 function timeAgo(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
@@ -36,14 +122,225 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
+
+const totalRisk = riskDist.reduce((sum, r) => sum + r.count, 0);
 ---
 
 <MarketingLayout title="Explore" description="Trending models, recent verifications, and community activity on QuantaMrkt">
   <div class="mx-auto max-w-7xl px-6 py-12">
     <!-- Hero -->
-    <div class="text-center mb-12">
+    <div class="text-center mb-8">
       <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Explore</h1>
-      <p class="text-base text-gray-400 max-w-xl mx-auto">Discover what's happening across the quantum-safe AI ecosystem.</p>
+      <p class="text-base text-gray-400 max-w-xl mx-auto mb-6">Discover what's happening across the quantum-safe AI ecosystem.</p>
+
+      <!-- Universal Search Bar -->
+      <form action="/models" method="GET" class="max-w-xl mx-auto">
+        <div class="relative">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            name="q"
+            placeholder="Search models, datasets, tools, and agents..."
+            class="w-full rounded-xl border border-white/10 bg-navy-800 pl-12 pr-4 py-3.5 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/50"
+          />
+        </div>
+      </form>
+    </div>
+
+    <!-- Category Breakdown Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+      <a href="/models" class="rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-electric/20 transition-colors text-center group">
+        <p class="text-2xl font-bold text-electric font-mono mb-1">{totalModels}</p>
+        <p class="text-xs text-gray-500 group-hover:text-gray-400">Models</p>
+      </a>
+      <a href="/models?category=dataset" class="rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-cyan-500/20 transition-colors text-center group">
+        <p class="text-2xl font-bold text-cyan-400 font-mono mb-1">{totalDatasets}</p>
+        <p class="text-xs text-gray-500 group-hover:text-gray-400">Datasets</p>
+      </a>
+      <a href="/models?category=tool" class="rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-purple-500/20 transition-colors text-center group">
+        <p class="text-2xl font-bold text-purple-400 font-mono mb-1">{totalTools}</p>
+        <p class="text-xs text-gray-500 group-hover:text-gray-400">Tools</p>
+      </a>
+      <a href="/agents" class="rounded-xl border border-white/5 bg-navy-800 p-4 hover:border-quantum/20 transition-colors text-center group">
+        <p class="text-2xl font-bold text-quantum font-mono mb-1">{totalAgents}</p>
+        <p class="text-xs text-gray-500 group-hover:text-gray-400">Agents</p>
+      </a>
+    </div>
+
+    <!-- PQC Stats -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 p-6 mb-8">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5 text-center">PQC Stats</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center mb-6">
+        <div>
+          <p class="text-3xl font-bold text-electric font-mono mb-1">{sigCount.toLocaleString()}</p>
+          <p class="text-xs text-gray-500">Total Signatures</p>
+        </div>
+        <div>
+          <p class="text-3xl font-bold text-cyan-400 font-mono mb-1">{totalFilesVerified.toLocaleString()}</p>
+          <p class="text-xs text-gray-500">Files Verified</p>
+        </div>
+        <div>
+          <p class="text-3xl font-bold text-purple-400 font-mono mb-1">{blockCount}</p>
+          <p class="text-xs text-gray-500">Chain Blocks</p>
+        </div>
+        <div>
+          <p class="text-3xl font-bold text-quantum font-mono mb-1">{algoDist.length}</p>
+          <p class="text-xs text-gray-500">Algorithms Used</p>
+        </div>
+      </div>
+      {algoDist.length > 0 && (
+        <div>
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 text-center">Algorithm Distribution</p>
+          <div class="flex items-center gap-3 justify-center flex-wrap">
+            {algoDist.map(a => (
+              <div class="flex items-center gap-2 rounded-lg bg-navy-900 border border-white/5 px-3 py-2">
+                <span class="font-mono text-xs text-electric">{a.algorithm}</span>
+                <span class="font-mono text-sm font-bold text-white">{a.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+
+    <!-- HNDL Risk Distribution -->
+    {riskDist.length > 0 && (
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-6 mb-8">
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">HNDL Risk Distribution</h2>
+        <div class="flex items-center rounded-full overflow-hidden h-6 bg-navy-900 mb-3">
+          {riskDist.sort((a, b) => {
+            const order = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+            return (order[a.risk_level as keyof typeof order] ?? 4) - (order[b.risk_level as keyof typeof order] ?? 4);
+          }).map(r => (
+            <div
+              class={`h-full ${riskColor(r.risk_level)} transition-all`}
+              style={`width: ${totalRisk > 0 ? (r.count / totalRisk * 100) : 0}%`}
+              title={`${r.risk_level}: ${r.count}`}
+            />
+          ))}
+        </div>
+        <div class="flex items-center justify-center gap-4 flex-wrap">
+          {riskDist.map(r => (
+            <div class="flex items-center gap-1.5">
+              <span class={`h-2.5 w-2.5 rounded-full ${riskColor(r.risk_level)}`} />
+              <span class={`text-xs font-medium ${riskTextColor(r.risk_level)}`}>{r.risk_level}</span>
+              <span class="text-xs text-gray-500 font-mono">{r.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- Trending + Recent grid -->
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
+      <!-- Recent Submissions -->
+      <div class="lg:col-span-1">
+        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+          <div class="px-4 py-3 border-b border-white/5">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Submissions</h2>
+          </div>
+          {recentSubmissions.length > 0 ? (
+            <div class="divide-y divide-white/[0.03]">
+              {recentSubmissions.map((entry: any, i: number) => {
+                let meta: any = {};
+                try { meta = JSON.parse(entry.metadata || '{}'); } catch {}
+                return (
+                  <div class={`block px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                    <div class="flex items-center justify-between mb-0.5">
+                      <span class="text-[10px] text-gray-600">{entry.action?.replace(':', ' ')}</span>
+                      <span class="text-[10px] text-gray-500">{entry.timestamp ? timeAgo(entry.timestamp) : ''}</span>
+                    </div>
+                    <p class="text-xs text-gray-300 truncate">{meta.name || entry.target_id}</p>
+                    {meta.author && <p class="text-[10px] text-gray-600">{meta.author}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div class="px-4 py-8 text-center text-xs text-gray-600">No recent submissions.</div>
+          )}
+        </div>
+      </div>
+
+      <!-- Recently Verified -->
+      <div class="lg:col-span-1">
+        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+          <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recently Verified</h2>
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-quantum opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-quantum"></span>
+            </span>
+          </div>
+          {recent.length > 0 ? (
+            <div class="divide-y divide-white/[0.03]">
+              {recent.slice(0, 5).map((event: any, i: number) => (
+                <div class={`block px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <div class="flex items-center justify-between mb-0.5">
+                    <span class="text-[11px] text-gray-500">{event.signed_at ? timeAgo(event.signed_at) : ''}</span>
+                    <span class="font-mono text-[10px] text-gray-600">{event.algorithm}</span>
+                  </div>
+                  <p class="text-xs text-gray-300 font-mono truncate">{event.model_author}/{event.model_name}</p>
+                  <p class="text-[10px] text-gray-600 font-mono truncate">{event.signer}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div class="px-4 py-8 text-center text-xs text-gray-600">No recent verifications.</div>
+          )}
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="lg:col-span-1 space-y-4">
+        {isLoggedIn ? (
+          <>
+            <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+              <div class="px-4 py-3 border-b border-white/5">
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Actions</h2>
+              </div>
+              <div class="p-4 space-y-2">
+                <a href="/dashboard/models" class="flex items-center gap-3 rounded-lg bg-electric/5 border border-electric/10 px-4 py-3 hover:bg-electric/10 transition-colors group">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-electric/10 text-electric">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                  </div>
+                  <div>
+                    <p class="text-xs font-medium text-electric group-hover:text-white">Push a Model</p>
+                    <p class="text-[10px] text-gray-600">Submit a model for PQC verification</p>
+                  </div>
+                </a>
+                <a href="/dashboard/agents" class="flex items-center gap-3 rounded-lg bg-quantum/5 border border-quantum/10 px-4 py-3 hover:bg-quantum/10 transition-colors group">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-quantum/10 text-quantum">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  </div>
+                  <div>
+                    <p class="text-xs font-medium text-quantum group-hover:text-white">Register Agent</p>
+                    <p class="text-[10px] text-gray-600">Register a PQC-authenticated agent</p>
+                  </div>
+                </a>
+                <a href="/dashboard/hndl" class="flex items-center gap-3 rounded-lg bg-warning/5 border border-warning/10 px-4 py-3 hover:bg-warning/10 transition-colors group">
+                  <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  </div>
+                  <div>
+                    <p class="text-xs font-medium text-warning group-hover:text-white">Scan for HNDL Risk</p>
+                    <p class="text-[10px] text-gray-600">Assess quantum vulnerability</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div class="rounded-xl border border-white/5 bg-navy-800 p-5 text-center">
+            <p class="text-xs text-gray-400 mb-3">Sign in to push models, register agents, and scan for HNDL risks.</p>
+            <a href="/api/auth/login" class="inline-flex rounded-lg bg-electric/10 border border-electric/20 px-4 py-2 text-xs font-medium text-electric hover:bg-electric/20 transition-colors">
+              Sign In with GitHub
+            </a>
+          </div>
+        )}
+      </div>
     </div>
 
     <!-- Trending Models -->
@@ -65,9 +362,6 @@ function timeAgo(dateStr: string): string {
                     <p class="text-xs font-semibold text-gray-200 group-hover:text-white truncate">{model.name}</p>
                     {model.source_platform === 'huggingface' && (
                       <span class="inline-flex rounded bg-yellow-500/10 border border-yellow-500/20 px-1 py-0 text-[9px] font-medium text-yellow-400 flex-shrink-0">HF</span>
-                    )}
-                    {model.ollama_name && (
-                      <span class="inline-flex rounded bg-white/5 border border-white/10 px-1 py-0 text-[9px] font-medium text-gray-500 flex-shrink-0" title={`ollama pull ${model.ollama_name}`}>OL</span>
                     )}
                   </div>
                   <p class="text-[10px] text-gray-500">{model.author}</p>
@@ -91,109 +385,57 @@ function timeAgo(dateStr: string): string {
       )}
     </section>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <!-- Recently Verified -->
-      <div class="lg:col-span-1">
-        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
-          <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recently Verified</h2>
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-quantum opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-quantum"></span>
-            </span>
-          </div>
-          {recent.length > 0 ? (
-            <div class="divide-y divide-white/[0.03]">
-              {recent.map((event: any, i: number) => (
-                <a href={`/models/${event.model_slug || encodeURIComponent((event.model_author || '') + '-' + (event.model_name || ''))}`} class={`block px-4 py-2.5 hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-                  <div class="flex items-center justify-between mb-0.5">
-                    <span class="text-[11px] text-gray-500">{event.signed_at ? timeAgo(event.signed_at) : ''}</span>
-                    <span class="font-mono text-[10px] text-gray-600">{event.algorithm}</span>
-                  </div>
-                  <p class="text-xs text-gray-300 font-mono truncate">{event.model_author}/{event.model_name}</p>
-                  <p class="text-[10px] text-gray-600 font-mono truncate">{event.signer}</p>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div class="px-4 py-8 text-center text-xs text-gray-600">No recent verifications.</div>
-          )}
+    <!-- HNDL Risk Leaderboard -->
+    <section class="mb-10">
+      <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="px-4 py-3 border-b border-white/5">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk Leaderboard</h2>
+          <p class="text-[10px] text-gray-600 mt-0.5">Highest-risk popular models by quantum vulnerability score</p>
         </div>
-      </div>
-
-      <!-- HNDL Risk Leaderboard -->
-      <div class="lg:col-span-2">
-        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden">
-          <div class="px-4 py-3 border-b border-white/5">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">HNDL Risk Leaderboard</h2>
-            <p class="text-[10px] text-gray-600 mt-0.5">Highest-risk popular models by quantum vulnerability score</p>
-          </div>
-          {leaderboard.length > 0 ? (
-            <table class="w-full text-xs">
-              <thead>
-                <tr class="border-b border-white/5 text-gray-500">
-                  <th class="text-left font-medium px-4 py-2 w-8">#</th>
-                  <th class="text-left font-medium px-4 py-2">Model</th>
-                  <th class="text-center font-medium px-4 py-2">Score</th>
-                  <th class="text-left font-medium px-4 py-2 hidden sm:table-cell">Shelf Life</th>
-                  <th class="text-left font-medium px-4 py-2 hidden md:table-cell">Recommendation</th>
+        {leaderboard.length > 0 ? (
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-white/5 text-gray-500">
+                <th class="text-left font-medium px-4 py-2 w-8">#</th>
+                <th class="text-left font-medium px-4 py-2">Model</th>
+                <th class="text-center font-medium px-4 py-2">Score</th>
+                <th class="text-left font-medium px-4 py-2 hidden sm:table-cell">Shelf Life</th>
+                <th class="text-left font-medium px-4 py-2 hidden md:table-cell">Recommendation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard.map((item: any, i: number) => (
+                <tr class={`border-b border-white/[0.03] hover:bg-white/[0.03] transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`} onclick={`window.location='/models/${item.slug || ''}'`}>
+                  <td class="px-4 py-2 text-gray-600 font-mono">{i + 1}</td>
+                  <td class="px-4 py-2">
+                    <a href={`/models/${item.slug || ''}`} class="text-gray-200 font-medium hover:text-white">{item.name}</a>
+                    <p class="text-[10px] text-gray-500">{item.author}</p>
+                  </td>
+                  <td class="px-4 py-2 text-center">
+                    <span class={`font-mono font-semibold ${
+                      item.risk_score >= 70 ? 'text-danger' :
+                      item.risk_score >= 50 ? 'text-warning' :
+                      item.risk_score >= 35 ? 'text-electric' :
+                      'text-quantum'
+                    }`}>{Math.round(item.risk_score)}</span>
+                  </td>
+                  <td class="px-4 py-2 hidden sm:table-cell">
+                    <span class="font-mono text-gray-400">{item.shelf_life ? `${item.shelf_life} yr` : 'N/A'}</span>
+                  </td>
+                  <td class="px-4 py-2 hidden md:table-cell">
+                    <span class={`text-[11px] ${
+                      item.risk_score >= 70 ? 'text-danger' :
+                      item.risk_score >= 50 ? 'text-warning' :
+                      'text-gray-500'
+                    }`}>{item.recommendation || 'N/A'}</span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {leaderboard.map((item: any, i: number) => (
-                  <tr class={`border-b border-white/[0.03] hover:bg-white/[0.03] transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`} onclick={`window.location='/models/${item.slug || ''}'`}>
-                    <td class="px-4 py-2 text-gray-600 font-mono">{i + 1}</td>
-                    <td class="px-4 py-2">
-                      <a href={`/models/${item.slug || ''}`} class="text-gray-200 font-medium hover:text-white">{item.name}</a>
-                      <p class="text-[10px] text-gray-500">{item.author}</p>
-                    </td>
-                    <td class="px-4 py-2 text-center">
-                      <span class={`font-mono font-semibold ${
-                        item.risk_score >= 70 ? 'text-danger' :
-                        item.risk_score >= 50 ? 'text-warning' :
-                        item.risk_score >= 35 ? 'text-electric' :
-                        'text-quantum'
-                      }`}>{Math.round(item.risk_score)}</span>
-                    </td>
-                    <td class="px-4 py-2 hidden sm:table-cell">
-                      <span class="font-mono text-gray-400">{item.shelf_life ? `${item.shelf_life} yr` : 'N/A'}</span>
-                    </td>
-                    <td class="px-4 py-2 hidden md:table-cell">
-                      <span class={`text-[11px] ${
-                        item.risk_score >= 70 ? 'text-danger' :
-                        item.risk_score >= 50 ? 'text-warning' :
-                        'text-gray-500'
-                      }`}>{item.recommendation || 'N/A'}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div class="px-4 py-8 text-center text-xs text-gray-600">No HNDL assessments yet.</div>
-          )}
-        </div>
-      </div>
-    </div>
-
-    <!-- Migration Stats -->
-    <section class="mt-10 mb-10">
-      <div class="rounded-xl border border-white/5 bg-navy-800 p-6">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5 text-center">Migration Stats</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-          <div>
-            <p class="text-4xl font-bold text-electric font-mono mb-1">1,247</p>
-            <p class="text-xs text-gray-500">Repositories Analyzed</p>
-          </div>
-          <div>
-            <p class="text-4xl font-bold text-warning font-mono mb-1">3,891</p>
-            <p class="text-xs text-gray-500">Vulnerabilities Found</p>
-          </div>
-          <div>
-            <p class="text-4xl font-bold text-quantum font-mono mb-1">2,156</p>
-            <p class="text-xs text-gray-500">Automatically Fixed</p>
-          </div>
-        </div>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div class="px-4 py-8 text-center text-xs text-gray-600">No HNDL assessments yet.</div>
+        )}
       </div>
     </section>
 
@@ -218,7 +460,7 @@ function timeAgo(dateStr: string): string {
           <p class="text-sm font-medium text-gray-200 group-hover:text-white mb-1">GitHub</p>
           <p class="text-xs text-gray-500">Star & contribute</p>
         </a>
-        <a href="/dashboard/agents" class="rounded-xl border border-white/5 bg-navy-800 p-5 hover:border-electric/20 transition-colors text-center group">
+        <a href="/agents#register-section" class="rounded-xl border border-white/5 bg-navy-800 p-5 hover:border-electric/20 transition-colors text-center group">
           <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-quantum/15 mx-auto mb-3">
             <svg class="h-5 w-5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
           </div>

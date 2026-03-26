@@ -28,6 +28,20 @@ const didShort = agent.did.length > 40 ? agent.did.slice(0, 20) + '...' + agent.
 
 // Public key fingerprint (first 16 chars of hex)
 const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : null;
+
+// Fetch activity count and last active from transparency_log
+let activityCount = 0;
+let lastActive: string | null = null;
+if (db) {
+  try {
+    const actResult = await db
+      .prepare(`SELECT COUNT(*) as count, MAX(timestamp) as last_active FROM transparency_log WHERE actor_did = ? OR (target_type = 'agent' AND target_id = ?)`)
+      .bind(agent.did, agent.did)
+      .first();
+    activityCount = (actResult as any)?.count ?? 0;
+    lastActive = (actResult as any)?.last_active ?? null;
+  } catch {}
+}
 ---
 
 <MarketingLayout title={`${agent.name} - Agent`} description={`PQC-authenticated agent: ${agent.name}`}>
@@ -77,6 +91,8 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
           <p class="text-xs text-gray-500">
             Registered {agent.created_at?.slice(0, 10) || 'N/A'}
             {orgName && (<span> &middot; Organization: <span class="text-gray-400">{orgName}</span></span>)}
+            <span> &middot; <span class="text-gray-400">{activityCount}</span> logged actions</span>
+            {lastActive && (<span> &middot; Last active: <span class="text-gray-400">{lastActive.slice(0, 10)}</span></span>)}
           </p>
         </div>
 
@@ -122,6 +138,14 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Registered</p>
                 <p class="text-sm text-gray-300">{agent.created_at ? new Date(agent.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
               </div>
+              <div class="rounded-lg border border-white/5 bg-navy-900 p-3">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Activity Count</p>
+                <p class="text-sm font-mono text-gray-300">{activityCount} actions</p>
+              </div>
+              <div class="rounded-lg border border-white/5 bg-navy-900 p-3">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Last Active</p>
+                <p class="text-sm text-gray-300">{lastActive ? new Date(lastActive).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No activity recorded'}</p>
+              </div>
             </div>
 
             {agent.public_key_hex && (
@@ -163,7 +187,6 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
           </div>
           <div class="p-5">
             <div class="flex items-start gap-3">
-              <!-- Root authority -->
               <div class="flex flex-col items-center">
                 <div class="flex h-8 w-8 items-center justify-center rounded-full bg-quantum/10 text-quantum">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
@@ -251,6 +274,14 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
               <span class="text-[11px] text-gray-300">{agent.created_at?.slice(0, 10) || 'N/A'}</span>
             </div>
             <div class="flex items-center justify-between px-4 py-2.5">
+              <span class="text-[11px] text-gray-500">Activity Count</span>
+              <span class="font-mono text-[11px] text-gray-300">{activityCount}</span>
+            </div>
+            <div class="flex items-center justify-between px-4 py-2.5">
+              <span class="text-[11px] text-gray-500">Last Active</span>
+              <span class="text-[11px] text-gray-300">{lastActive ? lastActive.slice(0, 10) : 'N/A'}</span>
+            </div>
+            <div class="flex items-center justify-between px-4 py-2.5">
               <span class="text-[11px] text-gray-500">Agent ID</span>
               <span class="font-mono text-[11px] text-gray-300">#{agent.id}</span>
             </div>
@@ -290,7 +321,7 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
     </div>
   </div>
 
-<script define:vars={{ agentId: agent.id, agentDid: agent.did }}>
+<script define:vars={{ agentId: agent.id, agentDid: agent.did, agentAlgorithm: agent.algorithm }}>
   // Copy-to-clipboard
   document.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -302,7 +333,7 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
     });
   });
 
-  // Verify agent identity
+  // Verify agent identity -- show algorithm and DID clearly
   const verifyBtn = document.getElementById('verify-agent-btn');
   const verifyResult = document.getElementById('verify-result');
   if (verifyBtn && verifyResult) {
@@ -316,7 +347,25 @@ const fingerprint = agent.public_key_hex ? agent.public_key_hex.slice(0, 32) : n
         verifyResult.classList.remove('hidden');
         if (data.did && data.algorithm) {
           verifyResult.className = 'rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-5 py-4 mb-6 text-sm text-emerald-400';
-          verifyResult.innerHTML = `<strong>Identity verified:</strong> DID is registered with <code class="font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded text-emerald-300">${data.algorithm}</code>`;
+          verifyResult.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              <strong>Identity Verified</strong>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div>
+                <span class="text-emerald-400/60">Algorithm:</span>
+                <code class="font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded text-emerald-300 ml-1">${data.algorithm}</code>
+              </div>
+              <div>
+                <span class="text-emerald-400/60">Status:</span>
+                <span class="ml-1">${data.status === 'active' ? 'Active' : data.status}</span>
+              </div>
+              <div class="sm:col-span-2">
+                <span class="text-emerald-400/60">DID:</span>
+                <code class="font-mono text-[11px] bg-emerald-500/10 px-1.5 py-0.5 rounded text-emerald-300 ml-1 break-all">${data.did}</code>
+              </div>
+            </div>`;
         } else {
           verifyResult.className = 'rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] px-5 py-4 mb-6 text-sm text-yellow-400';
           verifyResult.textContent = 'Agent exists but is missing a valid DID or algorithm.';

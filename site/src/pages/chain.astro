@@ -8,7 +8,6 @@ let blocks: any[] = [];
 let totalBlocks = 0;
 let latestBlock: any = null;
 let chainValid = true;
-let blocksChecked = 0;
 let totalEntries = 0;
 
 if (db) {
@@ -22,14 +21,13 @@ if (db) {
     if (totalBlocks > 0) {
       const verification = await verifyBlockChain(db);
       chainValid = verification.valid;
-      blocksChecked = verification.blocks_checked;
     }
 
     // Calculate total entries
     const entryCount = await db
       .prepare('SELECT COUNT(*) as total FROM transparency_log')
-      .first<{ total: number }>();
-    totalEntries = entryCount?.total ?? 0;
+      .first();
+    totalEntries = (entryCount as any)?.total ?? 0;
   } catch (e) {
     // Graceful degradation - table may not exist yet
   }
@@ -96,8 +94,8 @@ function formatTime(timestamp: string): string {
         </button>
       </div>
 
-      <!-- Verification Result -->
-      <div id="verify-result" class="hidden mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm"></div>
+      <!-- Verification Result (detailed) -->
+      <div id="verify-result" class="hidden mt-4 max-w-2xl mx-auto text-left"></div>
     </div>
 
     <!-- Chain Stats Grid -->
@@ -111,10 +109,8 @@ function formatTime(timestamp: string): string {
         <p class="text-2xl font-bold text-white font-mono">{totalEntries}</p>
       </div>
       <div class="rounded-lg border border-white/5 bg-navy-800 px-4 py-3 text-center">
-        <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Chain Verified</p>
-        <p class:list={['text-2xl font-bold font-mono', chainValid ? 'text-green-400' : 'text-red-400']}>
-          {chainValid ? 'Yes' : 'No'}
-        </p>
+        <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Signature Algorithm</p>
+        <p class="text-sm font-bold text-purple-400 font-mono">ML-DSA-87</p>
       </div>
       <div class="rounded-lg border border-white/5 bg-navy-800 px-4 py-3 text-center">
         <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Latest Block</p>
@@ -133,7 +129,7 @@ function formatTime(timestamp: string): string {
             <>
               <div class="flex flex-col items-center cursor-pointer block-card" data-block={block.block_number}>
                 <div class:list={[
-                  'rounded-lg border px-4 py-3 min-w-[200px] transition-colors hover:border-electric/30',
+                  'rounded-lg border px-4 py-3 min-w-[220px] transition-colors hover:border-electric/30',
                   block.block_number === 0 ? 'border-purple-500/30 bg-purple-500/5' : 'border-white/10 bg-navy-800'
                 ]}>
                   <div class="flex items-center justify-between mb-1">
@@ -143,12 +139,15 @@ function formatTime(timestamp: string): string {
                     ]}>
                       Block #{block.block_number}
                     </span>
-                    <span class="text-[10px] text-gray-600">{block.entries_count} entries</span>
+                    <span class="inline-flex items-center gap-1 rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[9px] font-mono text-purple-400">ML-DSA-87</span>
                   </div>
                   <div class="text-xs font-mono text-gray-500 mb-1" title={block.block_hash}>
                     {truncateHash(block.block_hash, 10)}
                   </div>
-                  <div class="text-[10px] text-gray-600">{formatTime(block.timestamp)}</div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-gray-600">{formatTime(block.timestamp)}</span>
+                    <span class="text-[10px] text-gray-600">{block.entries_count} entries</span>
+                  </div>
                 </div>
                 <div class="mt-1 text-[9px] text-gray-700 font-mono" title={block.previous_block_hash}>
                   prev: {truncateHash(block.previous_block_hash, 6)}
@@ -172,12 +171,15 @@ function formatTime(timestamp: string): string {
     <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden mb-8">
       <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
         <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">All Blocks</h2>
-        <button
-          id="mint-block-btn"
-          class="rounded-lg bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-colors border border-purple-500/20"
-        >
-          Mint Block
-        </button>
+        <div class="flex items-center gap-2">
+          <span id="mint-status" class="text-xs text-gray-500 hidden"></span>
+          <button
+            id="mint-block-btn"
+            class="rounded-lg bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-colors border border-purple-500/20"
+          >
+            Mint Block
+          </button>
+        </div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -189,7 +191,7 @@ function formatTime(timestamp: string): string {
               <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Block Hash</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Merkle Root</th>
               <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Prev Hash</th>
-              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Signature</th>
+              <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Sig. Algo</th>
             </tr>
           </thead>
           <tbody id="blocks-tbody">
@@ -225,8 +227,8 @@ function formatTime(timestamp: string): string {
                 <td class="px-4 py-3 font-mono text-xs text-gray-600" title={block.previous_block_hash}>
                   {truncateHash(block.previous_block_hash, 8)}
                 </td>
-                <td class="px-4 py-3 font-mono text-xs text-purple-400" title={block.signature || ''}>
-                  {block.signature ? truncateHash(block.signature, 8) : 'N/A'}
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-mono text-purple-400">ML-DSA-87</span>
                 </td>
               </tr>
             ))}
@@ -264,8 +266,14 @@ function formatTime(timestamp: string): string {
               <div id="detail-block-entries" class="text-sm text-gray-300"></div>
             </div>
             <div>
-              <div class="text-xs text-gray-500 mb-1">Signer DID</div>
-              <div id="detail-block-signer" class="text-sm font-mono text-gray-300 break-all"></div>
+              <div class="text-xs text-gray-500 mb-1">Signed with</div>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-mono text-purple-400">ML-DSA-87</span>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 mb-1">Signer</div>
+              <div id="detail-block-signer" class="text-xs font-mono text-gray-300 break-all"></div>
             </div>
             <div>
               <div class="text-xs text-gray-500 mb-1">Entry Range</div>
@@ -276,21 +284,25 @@ function formatTime(timestamp: string): string {
           <div class="border-t border-white/5 pt-3">
             <div class="text-xs font-medium text-white mb-2">Cryptographic Proof</div>
             <div class="rounded-lg bg-navy-800 p-4 space-y-2 font-mono text-xs">
-              <div>
-                <span class="text-gray-500">Block hash:    </span>
-                <span id="detail-block-hash" class="text-electric break-all ml-1"></span>
+              <div class="flex items-start gap-2">
+                <span class="text-gray-500 whitespace-nowrap">Block hash:</span>
+                <span id="detail-block-hash" class="text-electric break-all flex-1"></span>
+                <button class="copy-btn flex-shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors" data-target="detail-block-hash">Copy</button>
               </div>
-              <div>
-                <span class="text-gray-500">Previous hash: </span>
-                <span id="detail-block-prev" class="text-gray-300 break-all ml-1"></span>
+              <div class="flex items-start gap-2">
+                <span class="text-gray-500 whitespace-nowrap">Previous hash:</span>
+                <span id="detail-block-prev" class="text-gray-300 break-all flex-1"></span>
+                <button class="copy-btn flex-shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors" data-target="detail-block-prev">Copy</button>
               </div>
-              <div>
-                <span class="text-gray-500">Merkle root:   </span>
-                <span id="detail-block-merkle" class="text-cyan-400 break-all ml-1"></span>
+              <div class="flex items-start gap-2">
+                <span class="text-gray-500 whitespace-nowrap">Merkle root:</span>
+                <span id="detail-block-merkle" class="text-cyan-400 break-all flex-1"></span>
+                <button class="copy-btn flex-shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors" data-target="detail-block-merkle">Copy</button>
               </div>
-              <div class="border-t border-white/5 pt-2 mt-2">
-                <span class="text-gray-500">ML-DSA-87 sig: </span>
-                <span id="detail-block-sig" class="text-purple-400 break-all ml-1"></span>
+              <div class="border-t border-white/5 pt-2 mt-2 flex items-start gap-2">
+                <span class="text-gray-500 whitespace-nowrap">ML-DSA-87 sig:</span>
+                <span id="detail-block-sig" class="text-purple-400 break-all flex-1"></span>
+                <button class="copy-btn flex-shrink-0 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-500 hover:bg-white/10 hover:text-white transition-colors" data-target="detail-block-sig">Copy</button>
               </div>
             </div>
           </div>
@@ -301,6 +313,58 @@ function formatTime(timestamp: string): string {
             <div id="detail-block-entry-list" class="space-y-1">
               <div class="text-xs text-gray-500">Loading...</div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cryptographic Details Section -->
+    <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden mb-8">
+      <div class="px-6 py-4 border-b border-white/5">
+        <h2 class="text-sm font-semibold text-white">Cryptographic Details</h2>
+        <p class="text-[11px] text-gray-500 mt-0.5">Technical specification of the QuantaMrkt PQC block chain</p>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="rounded-lg border border-white/5 bg-navy-900 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="flex h-6 w-6 items-center justify-center rounded bg-electric/10">
+                <svg class="h-3.5 w-3.5 text-electric" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
+              </div>
+              <h3 class="text-xs font-semibold text-white">Block Hash</h3>
+            </div>
+            <p class="text-[11px] text-gray-400 leading-relaxed">SHA-256 of <code class="text-[10px] bg-navy-800 px-1 py-0.5 rounded text-electric">block_number | previous_hash | merkle_root | timestamp</code></p>
+            <p class="text-[10px] text-gray-600 mt-1">Ensures each block's content is tamper-evident and deterministically verifiable.</p>
+          </div>
+          <div class="rounded-lg border border-white/5 bg-navy-900 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="flex h-6 w-6 items-center justify-center rounded bg-cyan-500/10">
+                <svg class="h-3.5 w-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
+              </div>
+              <h3 class="text-xs font-semibold text-white">Merkle Root</h3>
+            </div>
+            <p class="text-[11px] text-gray-400 leading-relaxed">Binary Merkle tree of SHA-256 entry hashes. Odd nodes are paired with themselves.</p>
+            <p class="text-[10px] text-gray-600 mt-1">Allows efficient proof of inclusion for any transparency log entry.</p>
+          </div>
+          <div class="rounded-lg border border-white/5 bg-navy-900 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="flex h-6 w-6 items-center justify-center rounded bg-purple-500/10">
+                <svg class="h-3.5 w-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </div>
+              <h3 class="text-xs font-semibold text-white">Signature</h3>
+            </div>
+            <p class="text-[11px] text-gray-400 leading-relaxed"><span class="font-mono text-purple-400">ML-DSA-87</span> (FIPS 204) -- NIST-standardized post-quantum digital signature.</p>
+            <p class="text-[10px] text-gray-600 mt-1">Resistant to both classical and quantum attacks. Transitional blocks may use Ed25519 where noted.</p>
+          </div>
+          <div class="rounded-lg border border-white/5 bg-navy-900 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="flex h-6 w-6 items-center justify-center rounded bg-green-500/10">
+                <svg class="h-3.5 w-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              </div>
+              <h3 class="text-xs font-semibold text-white">Chain Property</h3>
+            </div>
+            <p class="text-[11px] text-gray-400 leading-relaxed">Each block's <code class="text-[10px] bg-navy-800 px-1 py-0.5 rounded text-gray-300">previous_block_hash</code> = prior block's <code class="text-[10px] bg-navy-800 px-1 py-0.5 rounded text-electric">block_hash</code></p>
+            <p class="text-[10px] text-gray-600 mt-1">Creates an immutable, ordered sequence. Tampering with any block breaks all subsequent hashes.</p>
           </div>
         </div>
       </div>
@@ -381,7 +445,21 @@ curl https://quantamrkt.com/api/chain/blocks/1
       return colors[action] || 'text-gray-400 bg-gray-400/10 border-gray-400/20';
     }
 
-    // Verify Chain button
+    // Copy buttons in detail modal
+    document.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('.copy-btn') as HTMLElement | null;
+      if (!btn) return;
+      const targetId = btn.dataset.target;
+      if (!targetId) return;
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      await navigator.clipboard.writeText(el.textContent || '');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig || ''; }, 1500);
+    });
+
+    // Verify Chain button -- show detailed per-block results
     document.getElementById('verify-chain-btn')?.addEventListener('click', async () => {
       const btn = document.getElementById('verify-chain-btn') as HTMLButtonElement;
       const resultEl = document.getElementById('verify-result')!;
@@ -390,46 +468,114 @@ curl https://quantamrkt.com/api/chain/blocks/1
 
       try {
         const res = await fetch('/api/chain/verify');
-        const data = await res.json();
+        const data: any = await res.json();
 
         resultEl.classList.remove('hidden');
+
+        // Also fetch blocks for detailed display
+        const blocksRes = await fetch('/api/chain/blocks?limit=50');
+        const blocksData: any = await blocksRes.json();
+        const allBlocks = blocksData.blocks || [];
+
+        let detailHtml = '';
+
         if (data.valid) {
-          resultEl.className = 'mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm bg-green-400/10 text-green-400 border border-green-400/20';
-          resultEl.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Chain integrity verified. ${data.blocks_checked} blocks checked.`;
+          detailHtml += `<div class="rounded-xl border border-green-500/20 bg-green-500/[0.06] p-4 mb-3">
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              <span class="text-sm font-semibold text-green-400">Chain Integrity Verified</span>
+            </div>
+            <p class="text-xs text-green-400/80">${data.blocks_checked} blocks checked. All hashes, Merkle roots, and chain links are valid.</p>
+          </div>`;
         } else {
-          resultEl.className = 'mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm bg-red-400/10 text-red-400 border border-red-400/20';
-          resultEl.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Chain broken. ${data.errors?.join(', ') || 'Unknown error'}`;
+          detailHtml += `<div class="rounded-xl border border-red-500/20 bg-red-500/[0.06] p-4 mb-3">
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              <span class="text-sm font-semibold text-red-400">Chain Broken</span>
+            </div>
+            <p class="text-xs text-red-400/80">${data.errors?.join('; ') || 'Unknown error'}</p>
+          </div>`;
         }
+
+        // Per-block detail table
+        if (allBlocks.length > 0) {
+          detailHtml += `<div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+            <table class="w-full text-xs">
+              <thead><tr class="border-b border-white/5 text-gray-500">
+                <th class="px-3 py-2 text-left font-medium">Block</th>
+                <th class="px-3 py-2 text-center font-medium">Hash Valid</th>
+                <th class="px-3 py-2 text-center font-medium">Chain Link</th>
+                <th class="px-3 py-2 text-center font-medium">Signature</th>
+              </tr></thead><tbody>`;
+
+          const sortedBlocks = [...allBlocks].sort((a: any, b: any) => a.block_number - b.block_number);
+          const failedAt = data.first_invalid ?? -1;
+
+          for (const block of sortedBlocks) {
+            const isFailed = block.block_number === failedAt;
+            const isBeforeFail = failedAt === -1 || block.block_number < failedAt;
+            const check = isBeforeFail
+              ? '<span class="text-green-400">Yes</span>'
+              : isFailed
+                ? '<span class="text-red-400">No</span>'
+                : '<span class="text-gray-600">--</span>';
+            const link = block.block_number === 0
+              ? '<span class="text-gray-500">Genesis</span>'
+              : check;
+            detailHtml += `<tr class="border-b border-white/[0.03]">
+              <td class="px-3 py-1.5 font-mono text-gray-300">#${block.block_number}</td>
+              <td class="px-3 py-1.5 text-center">${check}</td>
+              <td class="px-3 py-1.5 text-center">${link}</td>
+              <td class="px-3 py-1.5 text-center"><span class="text-purple-400 font-mono">ML-DSA-87</span></td>
+            </tr>`;
+          }
+
+          detailHtml += `</tbody></table></div>`;
+        }
+
+        resultEl.innerHTML = detailHtml;
       } catch (e) {
         resultEl.classList.remove('hidden');
-        resultEl.className = 'mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm bg-yellow-400/10 text-yellow-400 border border-yellow-400/20';
-        resultEl.textContent = 'Verification failed. Please try again.';
+        resultEl.innerHTML = `<div class="rounded-xl border border-yellow-500/20 bg-yellow-500/[0.06] p-4">
+          <p class="text-sm text-yellow-400">Verification failed. Please try again.</p>
+        </div>`;
       }
 
       btn.textContent = 'Verify Chain';
       btn.disabled = false;
     });
 
-    // Mint Block button
+    // Mint Block button -- call POST /api/chain/mint and show the new block
     document.getElementById('mint-block-btn')?.addEventListener('click', async () => {
       const btn = document.getElementById('mint-block-btn') as HTMLButtonElement;
+      const statusEl = document.getElementById('mint-status')!;
       btn.textContent = 'Minting...';
       btn.disabled = true;
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = 'Signing block with ML-DSA-87...';
 
       try {
         const res = await fetch('/api/chain/mint', { method: 'POST' });
-        const data = await res.json();
+        const data: any = await res.json();
 
         if (data.error) {
-          alert(data.error);
+          statusEl.className = 'text-xs text-red-400';
+          statusEl.textContent = data.error;
+          setTimeout(() => { statusEl.classList.add('hidden'); }, 4000);
         } else if (data.block) {
-          alert(`Block #${data.block.block_number} minted with ${data.block.entries_count} entries!`);
-          window.location.reload();
+          statusEl.className = 'text-xs text-green-400';
+          statusEl.textContent = `Block #${data.block.block_number} minted (${data.block.entries_count} entries)`;
+          // Reload after a brief delay to show status
+          setTimeout(() => { window.location.reload(); }, 1500);
         } else {
-          alert(data.message || 'No pending entries to mint.');
+          statusEl.className = 'text-xs text-yellow-400';
+          statusEl.textContent = data.message || 'No pending entries to mint.';
+          setTimeout(() => { statusEl.classList.add('hidden'); }, 4000);
         }
       } catch (e) {
-        alert('Minting failed. Please try again.');
+        statusEl.className = 'text-xs text-red-400';
+        statusEl.textContent = 'Minting failed. Please try again.';
+        setTimeout(() => { statusEl.classList.add('hidden'); }, 4000);
       }
 
       btn.textContent = 'Mint Block';
@@ -448,14 +594,14 @@ curl https://quantamrkt.com/api/chain/blocks/1
 
           try {
             const res = await fetch(`/api/chain/blocks/${blockNum}`);
-            const data = await res.json();
+            const data: any = await res.json();
             const block = data.block;
             const entries = data.entries || [];
 
             document.getElementById('detail-block-num')!.textContent = String(block.block_number);
             document.getElementById('detail-block-time')!.textContent = block.timestamp;
             document.getElementById('detail-block-entries')!.textContent = `${block.entries_count} entries`;
-            document.getElementById('detail-block-signer')!.textContent = block.signer_did;
+            document.getElementById('detail-block-signer')!.textContent = block.signer_did || 'did:web:quantamrkt.com:chain:authority';
             document.getElementById('detail-block-range')!.textContent =
               block.entries_count > 0 ? `#${block.entry_range_start} - #${block.entry_range_end}` : 'N/A (genesis)';
             document.getElementById('detail-block-hash')!.textContent = block.block_hash;

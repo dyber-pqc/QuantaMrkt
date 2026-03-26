@@ -38,6 +38,153 @@ const HF_CATEGORIES: { filter: string; limit: number }[] = [
   { filter: 'automatic-speech-recognition', limit: 5 },
 ];
 
+// ---- Tag Processing ----
+
+/** Prefixes to filter OUT from HuggingFace tags */
+const EXCLUDED_TAG_PREFIXES = [
+  'dataset:',
+  'arxiv:',
+  'license:',
+  'region:',
+  'deploy:',
+];
+const EXCLUDED_TAG_EXACT = [
+  'endpoints_compatible',
+  'text-embeddings-inference',
+];
+
+/** Known display-name overrides for common tags */
+const TAG_DISPLAY_NAMES: Record<string, string> = {
+  'pytorch': 'PyTorch',
+  'safetensors': 'Safetensors',
+  'tensorflow': 'TensorFlow',
+  'jax': 'JAX',
+  'onnx': 'ONNX',
+  'gguf': 'GGUF',
+  'gptq': 'GPTQ',
+  'awq': 'AWQ',
+  'transformers': 'Transformers',
+  'text-generation': 'Text Generation',
+  'text-generation-inference': 'Text Generation',
+  'image-generation': 'Image Generation',
+  'text-to-image': 'Text-to-Image',
+  'image-text-to-text': 'Image-Text-to-Text',
+  'sentence-similarity': 'Sentence Similarity',
+  'feature-extraction': 'Feature Extraction',
+  'automatic-speech-recognition': 'Speech Recognition',
+  'text-classification': 'Text Classification',
+  'token-classification': 'Token Classification',
+  'question-answering': 'Question Answering',
+  'fill-mask': 'Fill Mask',
+  'summarization': 'Summarization',
+  'translation': 'Translation',
+  'conversational': 'Conversational',
+  'zero-shot-classification': 'Zero-Shot Classification',
+  'bert': 'BERT',
+  'gpt2': 'GPT-2',
+  'llama': 'LLaMA',
+  'mistral': 'Mistral',
+  'gemma': 'Gemma',
+  'phi': 'Phi',
+  'qwen': 'Qwen',
+  'falcon': 'Falcon',
+  'mpt': 'MPT',
+  'bloom': 'BLOOM',
+  'opt': 'OPT',
+  'stablelm': 'StableLM',
+  'codellama': 'CodeLlama',
+  'starcoder': 'StarCoder',
+  'whisper': 'Whisper',
+  'en': 'English',
+  'zh': 'Chinese',
+  'fr': 'French',
+  'de': 'German',
+  'es': 'Spanish',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'ru': 'Russian',
+};
+
+/** Two-letter ISO language codes for filtering */
+const LANGUAGE_CODES = new Set([
+  'aa','ab','af','ak','am','an','ar','as','av','ay','az','ba','be','bg','bh','bi','bm','bn','bo','br',
+  'bs','ca','ce','ch','co','cr','cs','cu','cv','cy','da','de','dv','dz','ee','el','en','eo','es','et',
+  'eu','fa','ff','fi','fj','fo','fr','fy','ga','gd','gl','gn','gu','gv','ha','he','hi','ho','hr','ht',
+  'hu','hy','hz','ia','id','ie','ig','ii','ik','io','is','it','iu','ja','jv','ka','kg','ki','kj','kk',
+  'kl','km','kn','ko','kr','ks','ku','kv','kw','ky','la','lb','lg','li','ln','lo','lt','lu','lv','mg',
+  'mh','mi','mk','ml','mn','mr','ms','mt','my','na','nb','nd','ne','ng','nl','nn','no','nr','nv','ny',
+  'oc','oj','om','or','os','pa','pi','pl','ps','pt','qu','rm','rn','ro','ru','rw','sa','sc','sd','se',
+  'sg','si','sk','sl','sm','sn','so','sq','sr','ss','st','su','sv','sw','ta','te','tg','th','ti','tk',
+  'tl','tn','to','tr','ts','tt','tw','ty','ug','uk','ur','uz','ve','vi','vo','wa','wo','xh','yi','yo',
+  'za','zh','zu',
+]);
+
+/**
+ * Process and clean HuggingFace tags for display.
+ * Filters out noise, limits count, and formats for display.
+ */
+export function processHfTags(rawTags: string[], pipelineTag?: string | null): string[] {
+  const cleaned: string[] = [];
+
+  // Add pipeline_tag first if available
+  if (pipelineTag && !EXCLUDED_TAG_EXACT.includes(pipelineTag)) {
+    cleaned.push(pipelineTag);
+  }
+
+  // Separate language tags for special handling
+  const langTags: string[] = [];
+
+  for (const tag of rawTags) {
+    const lower = tag.toLowerCase();
+
+    // Skip if already added via pipeline_tag
+    if (lower === pipelineTag?.toLowerCase()) continue;
+
+    // Filter out excluded prefixes
+    if (EXCLUDED_TAG_PREFIXES.some(prefix => lower.startsWith(prefix))) continue;
+
+    // Filter out exact excluded tags
+    if (EXCLUDED_TAG_EXACT.includes(lower)) continue;
+
+    // Check if this is a language code
+    if (LANGUAGE_CODES.has(lower)) {
+      langTags.push(tag);
+      continue;
+    }
+
+    // Keep the tag
+    if (!cleaned.includes(tag)) {
+      cleaned.push(tag);
+    }
+  }
+
+  // Only include language tags if 3 or fewer
+  if (langTags.length <= 3) {
+    for (const lt of langTags) {
+      if (!cleaned.includes(lt)) {
+        cleaned.push(lt);
+      }
+    }
+  }
+
+  // Limit to max 6 tags
+  const limited = cleaned.slice(0, 6);
+
+  // Capitalize for display
+  return limited.map(tag => formatTagDisplay(tag));
+}
+
+/** Format a single tag for display */
+function formatTagDisplay(tag: string): string {
+  const lower = tag.toLowerCase();
+  if (TAG_DISPLAY_NAMES[lower]) return TAG_DISPLAY_NAMES[lower];
+  // Capitalize first letter of each word
+  return tag
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('-');
+}
+
 // ---- Main Sync Function ----
 
 export async function syncHuggingFaceModels(
@@ -140,14 +287,8 @@ async function syncSingleModel(
   const downloads = detailedModel.downloads || hfModel.downloads || 0;
   const likes = detailedModel.likes || hfModel.likes || 0;
 
-  // Build tags from pipeline_tag + model tags
-  const tags: string[] = [];
-  if (pipelineTag) tags.push(pipelineTag);
-  if (detailedModel.tags) {
-    for (const t of detailedModel.tags) {
-      if (!tags.includes(t)) tags.push(t);
-    }
-  }
+  // Build tags from pipeline_tag + model tags (cleaned and filtered)
+  const tags = processHfTags(detailedModel.tags || [], pipelineTag);
 
   // Insert model
   const model = await db
