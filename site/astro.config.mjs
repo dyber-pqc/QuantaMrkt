@@ -7,4 +7,7 @@ export default defineConfig({
   adapter: cloudflare(),
   integrations: [tailwind()],
   site: 'https://quantamrkt.com',
+  security: {
+    checkOrigin: false,
+  },
 });
