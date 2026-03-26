@@ -30,3 +30,4 @@ bucket_name = "quantmrkt-manifests"
 # Secrets (set via `wrangler secret put`):
 # GITHUB_CLIENT_SECRET
 # SESSION_SECRET
+# Auto-deploy trigger
