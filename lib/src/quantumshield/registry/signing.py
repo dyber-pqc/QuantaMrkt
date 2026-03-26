@@ -76,7 +76,9 @@ class ShieldRegistry:
 
         import hashlib as _hashlib
 
-        url = f"{self.api_url}/api/models/{namespace}/versions"
+        # Convert org/model to org-model for URL routing (Astro uses single path segments)
+        slug = namespace.replace("/", "-")
+        url = f"{self.api_url}/api/models/{slug}/versions"
 
         # Build the payload shape expected by the versions API
         manifest_hash = _hashlib.sha3_256(manifest._canonical_bytes()).hexdigest()
@@ -189,8 +191,9 @@ class ShieldRegistry:
             default_author = "unknown"
             default_name = parts[0]
 
+        slug = namespace.replace("/", "-")
         payload: dict[str, Any] = {
-            "slug": namespace,
+            "slug": slug,
             "name": default_name,
             "author": default_author,
         }
