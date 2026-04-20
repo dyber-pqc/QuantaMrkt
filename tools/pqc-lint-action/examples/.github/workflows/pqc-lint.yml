@@ -1,0 +1,26 @@
+name: PQC Lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write   # needed for SARIF upload
+  pull-requests: write     # needed for PR annotations
+
+jobs:
+  pqc-lint:
+    name: Scan for classical cryptography
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dyber-pqc/pqc-lint-action@v1
+        with:
+          path: '.'
+          fail-on: 'high'
+          upload-sarif: 'true'
+          exclude: '**/vendor/**,**/third_party/**'

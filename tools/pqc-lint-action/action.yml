@@ -1,0 +1,93 @@
+name: 'PQC Lint'
+description: 'Scan code for classical (quantum-vulnerable) cryptography and suggest PQC replacements'
+author: 'Dyber PQC'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  path:
+    description: 'Directory or file path to scan (relative to repo root)'
+    required: false
+    default: '.'
+  fail-on:
+    description: 'Minimum severity that causes the action to fail. One of: low, medium, high, critical'
+    required: false
+    default: 'high'
+  format:
+    description: 'Output format: text, json, sarif, github'
+    required: false
+    default: 'github'
+  output-file:
+    description: 'Optional file path to write formatted output to'
+    required: false
+    default: ''
+  exclude:
+    description: 'Comma-separated glob patterns to exclude from scan'
+    required: false
+    default: '**/node_modules/**,**/.git/**,**/dist/**,**/build/**,**/.venv/**,**/venv/**'
+  languages:
+    description: 'Comma-separated list of languages to scan (python,javascript,go,rust,java,c). Empty = auto-detect all.'
+    required: false
+    default: ''
+  upload-sarif:
+    description: 'Upload SARIF results to GitHub code scanning (requires security-events: write permission)'
+    required: false
+    default: 'false'
+
+outputs:
+  total-findings:
+    description: 'Total number of findings'
+    value: ${{ steps.scan.outputs.total-findings }}
+  critical:
+    description: 'Number of critical findings'
+    value: ${{ steps.scan.outputs.critical }}
+  high:
+    description: 'Number of high findings'
+    value: ${{ steps.scan.outputs.high }}
+  medium:
+    description: 'Number of medium findings'
+    value: ${{ steps.scan.outputs.medium }}
+  low:
+    description: 'Number of low findings'
+    value: ${{ steps.scan.outputs.low }}
+  sarif-path:
+    description: 'Path to the SARIF file (if generated)'
+    value: ${{ steps.scan.outputs.sarif-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install pqc-lint
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install "pqc-lint==0.1.0" || python -m pip install "${{ github.action_path }}"
+
+    - name: Run pqc-lint scan
+      id: scan
+      shell: bash
+      env:
+        PQC_LINT_PATH: ${{ inputs.path }}
+        PQC_LINT_FAIL_ON: ${{ inputs.fail-on }}
+        PQC_LINT_FORMAT: ${{ inputs.format }}
+        PQC_LINT_OUTPUT: ${{ inputs.output-file }}
+        PQC_LINT_EXCLUDE: ${{ inputs.exclude }}
+        PQC_LINT_LANGUAGES: ${{ inputs.languages }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        python -m pqc_lint.action_runner
+
+    - name: Upload SARIF to GitHub code scanning
+      if: inputs.upload-sarif == 'true' && steps.scan.outputs.sarif-path != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif-path }}
+      continue-on-error: true
