@@ -1,0 +1,303 @@
+---
+import MarketingLayout from '../../../layouts/MarketingLayout.astro';
+import { scanOrCache, parseHfRepo } from '../../../lib/hndl-scanner';
+import type { HNDLScanResult } from '../../../lib/hndl-scanner';
+
+// URL shape: /scan/hf/{org}/{repo} — everything after /scan/hf/ is the repo id
+const path = Astro.params.path || '';
+const repoId = parseHfRepo(path);
+
+const db = (Astro.locals as any).runtime?.env?.DB;
+
+let scan: HNDLScanResult | null = null;
+let error: string | null = null;
+
+if (!repoId) {
+  error = 'Invalid path. Expected /scan/hf/org/repo.';
+} else if (db) {
+  try {
+    scan = await scanOrCache(db, repoId);
+  } catch (err: any) {
+    error = err?.message || 'Scan failed';
+  }
+}
+
+// OG + meta
+const pageTitle = scan
+  ? `HNDL: ${scan.risk_level} (${scan.risk_score}/100) — ${scan.hf_repo_id}`
+  : error
+    ? 'HNDL Scan — Not Found'
+    : 'HNDL Risk Scan';
+
+const description = scan
+  ? `${scan.hf_repo_id} has ${scan.risk_level} HNDL risk (${scan.risk_score}/100). ${scan.recommendation}`
+  : 'Free quantum risk assessment for any HuggingFace model.';
+
+const canonicalUrl = scan ? `https://quantamrkt.com/scan/hf/${scan.hf_repo_id}` : '';
+const ogImageUrl = scan ? `https://quantamrkt.com/og/scan/hf/${scan.hf_repo_id}.svg` : '';
+const badgeUrlMd = scan ? `![HNDL: ${scan.risk_level}](https://quantamrkt.com/badge/hndl/${scan.hf_repo_id}.svg)` : '';
+const badgeHtml = scan ? `<a href="https://quantamrkt.com/scan/hf/${scan.hf_repo_id}"><img src="https://quantamrkt.com/badge/hndl/${scan.hf_repo_id}.svg" alt="HNDL: ${scan.risk_level}" /></a>` : '';
+
+// Colors for risk levels
+const riskColors: Record<string, { bg: string; text: string; border: string; ring: string }> = {
+  CRITICAL: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', ring: 'ring-red-500/20' },
+  HIGH:     { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30', ring: 'ring-orange-500/20' },
+  MEDIUM:   { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30', ring: 'ring-yellow-500/20' },
+  LOW:      { bg: 'bg-quantum/10', text: 'text-quantum', border: 'border-quantum/30', ring: 'ring-quantum/20' },
+};
+
+const c = scan ? riskColors[scan.risk_level] : riskColors.LOW;
+
+function fmtSize(bytes: number): string {
+  if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(1) + ' GB';
+  if (bytes >= 1024 ** 2) return (bytes / 1024 ** 2).toFixed(1) + ' MB';
+  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K';
+  return String(n);
+}
+---
+
+<MarketingLayout
+  title={pageTitle}
+  description={description}
+  ogImage={scan ? ogImageUrl : undefined}
+  canonical={scan ? canonicalUrl : undefined}
+>
+
+  <main class="mx-auto max-w-5xl px-6 py-10">
+    {error && (
+      <div class="rounded-xl border border-red-500/30 bg-red-500/5 p-6">
+        <h1 class="text-xl font-bold text-red-400 mb-2">Scan Failed</h1>
+        <p class="text-sm text-gray-400">{error}</p>
+        <a href="/scan" class="inline-block mt-4 text-sm text-electric hover:underline">Try another URL →</a>
+      </div>
+    )}
+
+    {scan && (
+      <>
+        {/* Breadcrumb */}
+        <nav class="flex items-center gap-2 text-xs text-gray-500 mb-5" aria-label="Breadcrumb">
+          <a href="/scan" class="hover:text-electric transition-colors">HNDL Scanner</a>
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <span class="text-gray-400">{scan.author}</span>
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <span class="text-gray-300" aria-current="page">{scan.model_name}</span>
+        </nav>
+
+        {/* Header */}
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+          <div>
+            <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">HNDL risk scan</div>
+            <h1 class="text-3xl md:text-4xl font-bold">
+              <a href={`https://huggingface.co/${scan.hf_repo_id}`} target="_blank" rel="noopener" class="hover:text-electric transition-colors">
+                {scan.hf_repo_id}
+              </a>
+            </h1>
+            <p class="text-xs text-gray-500 mt-1">
+              Scanned {scan.scanned_at} UTC &middot; viewed {scan.scan_count.toLocaleString()} time{scan.scan_count === 1 ? '' : 's'}
+              {scan.fresh ? ' · fresh scan' : ' · cached'}
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              id="rescan-btn"
+              data-repo={scan.hf_repo_id}
+              class="rounded-lg border border-white/10 bg-navy-800 px-3 py-1.5 text-xs text-gray-300 hover:bg-white/5 transition-colors"
+              title="Force a fresh scan"
+            >↻ Rescan</button>
+            <button
+              id="share-btn"
+              data-url={canonicalUrl}
+              class="rounded-lg border border-electric/30 bg-electric/10 px-3 py-1.5 text-xs text-electric hover:bg-electric/20 transition-colors"
+            >Copy share URL</button>
+          </div>
+        </div>
+
+        {/* Main risk card */}
+        <div class={`rounded-2xl border ${c.border} ${c.bg} p-6 md:p-8 mb-6 ring-1 ${c.ring}`}>
+          <div class="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-center">
+            {/* Ring + score */}
+            <div class="relative w-32 h-32 mx-auto md:mx-0">
+              <svg class="w-32 h-32 -rotate-90" viewBox="0 0 128 128">
+                <circle cx="64" cy="64" r="56" stroke="currentColor" stroke-width="10" fill="none" class="text-white/5"/>
+                <circle
+                  cx="64" cy="64" r="56"
+                  stroke="currentColor" stroke-width="10" fill="none"
+                  stroke-linecap="round"
+                  stroke-dasharray={352}
+                  stroke-dashoffset={352 - (scan.risk_score / 100) * 352}
+                  class={c.text}
+                />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <div class={`text-4xl font-bold ${c.text}`}>{scan.risk_score}</div>
+                <div class="text-[10px] uppercase tracking-wider text-gray-500">of 100</div>
+              </div>
+            </div>
+
+            <div>
+              <div class={`inline-flex items-center gap-2 rounded-full border ${c.border} ${c.bg} ${c.text} px-3 py-1 text-xs font-bold uppercase tracking-wider mb-3`}>
+                {scan.risk_level} HNDL RISK
+              </div>
+              <h2 class="text-2xl font-bold mb-2">Shelf life: ~{scan.shelf_life_years} years</h2>
+              <p class="text-sm text-gray-300 leading-relaxed">{scan.recommendation}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div class="rounded-xl border border-white/5 bg-navy-800 p-4">
+            <div class="text-xs text-gray-500 uppercase mb-1">Size</div>
+            <div class="text-lg font-bold">{fmtSize(scan.total_size)}</div>
+          </div>
+          <div class="rounded-xl border border-white/5 bg-navy-800 p-4">
+            <div class="text-xs text-gray-500 uppercase mb-1">Files</div>
+            <div class="text-lg font-bold">{scan.file_count}</div>
+          </div>
+          <div class="rounded-xl border border-white/5 bg-navy-800 p-4">
+            <div class="text-xs text-gray-500 uppercase mb-1">Downloads</div>
+            <div class="text-lg font-bold">{fmtCount(scan.downloads)}</div>
+          </div>
+          <div class="rounded-xl border border-white/5 bg-navy-800 p-4">
+            <div class="text-xs text-gray-500 uppercase mb-1">Type</div>
+            <div class="text-sm font-semibold truncate" title={scan.pipeline_tag || 'unknown'}>{scan.pipeline_tag || 'unknown'}</div>
+          </div>
+        </div>
+
+        {/* Breakdown */}
+        <div class="rounded-xl border border-white/5 bg-navy-800 overflow-hidden mb-6">
+          <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between">
+            <h3 class="text-sm font-semibold">Risk factor breakdown</h3>
+            <span class="text-xs text-gray-500">Total: {scan.risk_score}/100</span>
+          </div>
+          <div class="divide-y divide-white/5">
+            {scan.breakdown.map((b) => (
+              <div class="px-5 py-3 flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="text-sm font-medium text-gray-300">{b.factor}</div>
+                  <div class="text-xs text-gray-500 mt-0.5">{b.reason}</div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <span class={`font-mono text-sm font-semibold ${b.points === 0 ? 'text-gray-500' : b.points >= 20 ? 'text-red-400' : b.points >= 10 ? 'text-orange-400' : 'text-yellow-400'}`}>
+                    {b.points > 0 ? '+' : ''}{b.points}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Badge embed */}
+        <div class="rounded-xl border border-electric/20 bg-electric/5 p-5 mb-6">
+          <h3 class="text-sm font-semibold text-electric mb-3 flex items-center gap-2">
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            Embed the badge in your README
+          </h3>
+          <p class="text-xs text-gray-400 mb-3">Show the world you audited your artifact for quantum risk. Readers click through to this page.</p>
+
+          <div class="rounded-lg border border-white/10 bg-navy-900/60 p-3 mb-2 flex items-center gap-3">
+            <img src={`/badge/hndl/${scan.hf_repo_id}.svg`} alt={`HNDL: ${scan.risk_level}`} class="flex-shrink-0" />
+            <span class="text-xs text-gray-500">Live preview of your badge</span>
+          </div>
+
+          <div class="relative group">
+            <label class="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Markdown</label>
+            <pre class="rounded-lg border border-white/10 bg-navy-900/60 p-3 text-xs font-mono text-gray-300 overflow-x-auto"><code id="md-code">{badgeUrlMd}</code></pre>
+            <button data-copy-target="md-code" class="copy-btn absolute top-7 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">Copy</button>
+          </div>
+
+          <div class="relative group mt-3">
+            <label class="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">HTML</label>
+            <pre class="rounded-lg border border-white/10 bg-navy-900/60 p-3 text-xs font-mono text-gray-300 overflow-x-auto"><code id="html-code">{badgeHtml}</code></pre>
+            <button data-copy-target="html-code" class="copy-btn absolute top-7 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">Copy</button>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-10">
+          <a href={`https://huggingface.co/${scan.hf_repo_id}`} target="_blank" rel="noopener" class="rounded-xl border border-white/10 bg-navy-800 p-4 hover:border-electric/30 transition-colors">
+            <div class="text-xs text-gray-500 uppercase mb-1">View on</div>
+            <div class="font-semibold">HuggingFace →</div>
+          </a>
+          <a href="/scan" class="rounded-xl border border-white/10 bg-navy-800 p-4 hover:border-electric/30 transition-colors">
+            <div class="text-xs text-gray-500 uppercase mb-1">Scan another</div>
+            <div class="font-semibold">New HNDL scan →</div>
+          </a>
+          <a href="/models" class="rounded-xl border border-white/10 bg-navy-800 p-4 hover:border-electric/30 transition-colors">
+            <div class="text-xs text-gray-500 uppercase mb-1">Register this</div>
+            <div class="font-semibold">Get PQC-verified →</div>
+          </a>
+        </div>
+
+        <div class="text-center text-xs text-gray-500">
+          Scan uses deterministic heuristics over HuggingFace metadata · <a href="/docs" class="text-electric hover:underline">How HNDL is calculated</a>
+        </div>
+      </>
+    )}
+  </main>
+
+  <script>
+    // Copy buttons for badge snippets
+    document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const targetId = btn.getAttribute('data-copy-target');
+        const codeEl = targetId ? document.getElementById(targetId) : null;
+        const text = codeEl?.textContent ?? '';
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = original ?? 'Copy'; }, 1200);
+        } catch {
+          // Ignore
+        }
+      });
+    });
+
+    // Share button copies canonical URL
+    const shareBtn = document.getElementById('share-btn') as HTMLButtonElement | null;
+    shareBtn?.addEventListener('click', async () => {
+      const url = shareBtn.getAttribute('data-url') ?? location.href;
+      try {
+        await navigator.clipboard.writeText(url);
+        const original = shareBtn.textContent;
+        shareBtn.textContent = 'Link copied';
+        setTimeout(() => { shareBtn.textContent = original ?? 'Copy share URL'; }, 1500);
+      } catch {
+        // ignore
+      }
+    });
+
+    // Rescan button — force refresh via POST
+    const rescanBtn = document.getElementById('rescan-btn') as HTMLButtonElement | null;
+    rescanBtn?.addEventListener('click', async () => {
+      const repo = rescanBtn.getAttribute('data-repo');
+      if (!repo) return;
+      rescanBtn.disabled = true;
+      rescanBtn.textContent = 'Scanning...';
+      try {
+        const res = await fetch('/api/scan/hndl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: repo, refresh: true }),
+        });
+        if (res.ok) {
+          location.reload();
+        } else {
+          rescanBtn.textContent = 'Rescan failed';
+          setTimeout(() => { rescanBtn.textContent = '↻ Rescan'; rescanBtn.disabled = false; }, 2000);
+        }
+      } catch {
+        rescanBtn.textContent = 'Error';
+        setTimeout(() => { rescanBtn.textContent = '↻ Rescan'; rescanBtn.disabled = false; }, 2000);
+      }
+    });
+  </script>
+</MarketingLayout>

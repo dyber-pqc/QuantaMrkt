@@ -6,14 +6,25 @@ import type { User } from '../lib/auth';
 interface Props {
   title?: string;
   description?: string;
+  ogImage?: string;
+  ogImageWidth?: number;
+  ogImageHeight?: number;
+  canonical?: string;
 }
 
-const { title, description } = Astro.props;
+const { title, description, ogImage, ogImageWidth, ogImageHeight, canonical } = Astro.props;
 const currentPath = Astro.url.pathname;
 const user = (Astro.locals as any).user as User | undefined;
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout
+  title={title}
+  description={description}
+  ogImage={ogImage}
+  ogImageWidth={ogImageWidth}
+  ogImageHeight={ogImageHeight}
+  canonical={canonical}
+>
   <!-- Header -->
   <header class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-navy-900/80 backdrop-blur-xl">
     <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">

@@ -4,11 +4,22 @@ import '../styles/global.css';
 interface Props {
   title?: string;
   description?: string;
+  ogImage?: string;
+  ogImageWidth?: number;
+  ogImageHeight?: number;
+  canonical?: string;
 }
 
-const { title = 'QuantaMrkt', description = 'The Quantum-Safe AI Marketplace' } = Astro.props;
+const {
+  title = 'QuantaMrkt',
+  description = 'The Quantum-Safe AI Marketplace',
+  ogImage = 'https://quantamrkt.com/og-image.png',
+  ogImageWidth = 1200,
+  ogImageHeight = 630,
+  canonical,
+} = Astro.props;
 const fullTitle = title === 'QuantaMrkt' ? title : `${title} | QuantaMrkt`;
-const canonicalUrl = new URL(Astro.url.pathname, 'https://quantamrkt.com').href;
+const canonicalUrl = canonical || new URL(Astro.url.pathname, 'https://quantamrkt.com').href;
 
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
@@ -30,12 +41,14 @@ const jsonLd = JSON.stringify({
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:image" content="https://quantamrkt.com/og-image.png" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content={String(ogImageWidth)} />
+    <meta property="og:image:height" content={String(ogImageHeight)} />
     <meta property="og:site_name" content="QuantaMrkt" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content="https://quantamrkt.com/og-image.png" />
+    <meta name="twitter:image" content={ogImage} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Preconnect to Google Fonts for faster font loading -->
