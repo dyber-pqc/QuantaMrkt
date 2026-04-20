@@ -48,10 +48,21 @@ if (db) {
   <div class="mx-auto max-w-5xl px-6 py-8">
 
     <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-xs text-gray-500 mb-6">
-      <a href="/agents" class="hover:text-gray-300 transition-colors">Agents</a>
+    <nav class="flex items-center gap-2 text-xs text-gray-500 mb-6" aria-label="Breadcrumb">
+      <a href="/agents" class="hover:text-electric transition-colors">Agents</a>
+      {orgName && (
+        <>
+          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          <a
+            href={`/agents?q=${encodeURIComponent(orgName)}`}
+            class="hover:text-electric transition-colors"
+          >
+            {orgName}
+          </a>
+        </>
+      )}
       <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-      <span class="text-gray-300">{agent.name}</span>
+      <span class="text-gray-300" aria-current="page">{shortName || agent.name}</span>
     </nav>
 
     <!-- Agent Header -->

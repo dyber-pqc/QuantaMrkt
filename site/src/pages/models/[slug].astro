@@ -157,12 +157,24 @@ const githubBase = githubBlobBase(model.source_url);
   <div class="mx-auto max-w-7xl px-6 py-6">
 
     <!-- Breadcrumb / Back -->
-    <nav class="flex items-center gap-2 text-xs text-gray-500 mb-5">
-      <a href="/models" class="hover:text-gray-300 transition-colors">Models</a>
+    <nav class="flex items-center gap-2 text-xs text-gray-500 mb-5" aria-label="Breadcrumb">
+      <a href="/models" class="hover:text-electric transition-colors">All</a>
       <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-      <span class="text-gray-400">{model.author}</span>
+      <a
+        href={`/models?category=${model.category || 'model'}`}
+        class="hover:text-electric transition-colors capitalize"
+      >
+        {model.category === 'tool' ? 'Tools' : model.category === 'dataset' ? 'Datasets' : 'Models'}
+      </a>
       <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-      <span class="text-gray-300">{model.name}</span>
+      <a
+        href={`/models?q=${encodeURIComponent(model.author || '')}`}
+        class="hover:text-electric transition-colors"
+      >
+        {model.author}
+      </a>
+      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+      <span class="text-gray-300" aria-current="page">{model.name}</span>
     </nav>
 
     <!-- Repository Header -->
