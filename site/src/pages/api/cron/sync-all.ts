@@ -59,16 +59,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const pendingEntries = await db
         .prepare(
           `SELECT COUNT(*) as cnt FROM transparency_log
-           WHERE id > COALESCE((SELECT MAX(end_entry_id) FROM chain_blocks), 0)`,
+           WHERE id > COALESCE((SELECT MAX(entry_range_end) FROM chain_blocks), 0)`,
         )
         .first<{ cnt: number }>();
 
       if (pendingEntries && pendingEntries.cnt >= 5) {
         const block = await createBlock(db);
         results.block = {
-          minted: true,
+          minted: !!block,
           block_number: block?.block_number,
-          entry_count: block?.entry_count,
+          entry_count: block?.entries_count,
         };
       } else {
         results.block = {

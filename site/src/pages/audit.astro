@@ -32,7 +32,7 @@ if (db) {
     // Stats
     const todayCount = await db
       .prepare(`SELECT COUNT(*) as cnt FROM transparency_log
-                WHERE action LIKE 'model:signed%'
+                WHERE (action = 'model:pqc_signed' OR action = 'model:signed')
                 AND timestamp > datetime('now', '-1 day')`)
       .first<{ cnt: number }>();
     stats.models_signed_today = todayCount?.cnt ?? 0;
@@ -52,7 +52,8 @@ if (db) {
 
     const lastSign = await db
       .prepare(`SELECT timestamp FROM transparency_log
-                WHERE action LIKE 'model:signed%' ORDER BY id DESC LIMIT 1`)
+                WHERE action = 'model:pqc_signed' OR action = 'model:signed'
+                ORDER BY id DESC LIMIT 1`)
       .first<{ timestamp: string }>();
     stats.last_sign = lastSign?.timestamp ?? '—';
 
@@ -68,24 +69,24 @@ function truncateHash(hash: string, len: number = 10): string {
 }
 
 function actionIcon(action: string): string {
-  if (action.includes('model:signed')) return '✍';
-  if (action.includes('model:submitted') || action.includes('model:created')) return '＋';
+  if (action.includes('pqc_signed') || action === 'model:signed') return '✍';
+  if (action.includes('submitted') || action.includes('created')) return '＋';
   if (action.includes('dataset:')) return '▤';
   if (action.includes('agent:')) return '◉';
   if (action.includes('cron:')) return '⟳';
-  if (action.includes('chain:') || action.includes('block:')) return '⛓';
-  if (action.includes('verify')) return '✓';
+  if (action.includes('chain:') || action.includes('block:') || action.includes('manifest:')) return '⛓';
+  if (action.includes('verif')) return '✓';
   return '•';
 }
 
 function actionColor(action: string): string {
-  if (action.includes('model:signed')) return 'text-emerald-400';
-  if (action.includes('model:submitted') || action.includes('created')) return 'text-electric';
+  if (action.includes('pqc_signed') || action === 'model:signed') return 'text-emerald-400';
+  if (action.includes('submitted') || action.includes('created')) return 'text-electric';
   if (action.includes('dataset:')) return 'text-violet-400';
   if (action.includes('agent:')) return 'text-cyan-400';
   if (action.includes('cron:')) return 'text-gray-400';
-  if (action.includes('chain:') || action.includes('block:')) return 'text-amber-400';
-  if (action.includes('verify')) return 'text-blue-400';
+  if (action.includes('chain:') || action.includes('block:') || action.includes('manifest:')) return 'text-amber-400';
+  if (action.includes('verif')) return 'text-blue-400';
   return 'text-gray-500';
 }
 
@@ -154,11 +155,12 @@ function formatRelative(timestamp: string): string {
     <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
       <span class="text-gray-500">Filter:</span>
       <button data-filter="all" class="filter-btn px-3 py-1 rounded-full border border-electric bg-electric/10 text-electric">All</button>
-      <button data-filter="model:signed" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Signings</button>
-      <button data-filter="model:submitted" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">New Models</button>
+      <button data-filter="signed" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">PQC Signings</button>
+      <button data-filter="submitted" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">New Models</button>
       <button data-filter="dataset" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Datasets</button>
       <button data-filter="cron" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Cron Jobs</button>
-      <button data-filter="block" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Blocks</button>
+      <button data-filter="verified" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Verifications</button>
+      <button data-filter="manifest" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Manifests</button>
       <div class="ml-auto flex items-center gap-2">
         <a href="/api/transparency/log?limit=100" target="_blank" class="text-electric hover:underline">JSON API ↗</a>
         <a href="/chain" class="text-electric hover:underline">View Chain →</a>

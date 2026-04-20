@@ -504,11 +504,11 @@ async function syncSingleModel(
       description,
       JSON.stringify(tags),
       license,
-      pipelineTag,
-      null,
+      pipelineTag,              // framework
+      null,                     // parameters
       downloads,
       likes,
-      pipelineTag,
+      'model',                  // category — always 'model' for synced HF models
       `https://huggingface.co/${repoId}`,
       repoId,
     )
