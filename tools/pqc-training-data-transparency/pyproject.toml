@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-training-data-transparency"
+version = "0.1.0"
+description = "PQC-native Merkle-tree commitments for AI training datasets. Prove what a model was trained on without revealing the data. SHA3-256 tree + ML-DSA signatures."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "merkle", "training-data", "ai-provenance", "ml-dsa", "post-quantum", "copyright"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "quantumshield>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pqc_training_data"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
