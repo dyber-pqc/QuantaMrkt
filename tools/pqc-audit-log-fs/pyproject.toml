@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-audit-log-fs"
+version = "0.1.0"
+description = "Immutable filesystem-level audit log for AI inference events. SHA3-256 Merkle segments, ML-DSA signed headers, cross-segment hash chain, O(log n) inclusion proofs. Built for EU AI Act / legal discovery."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "audit-log", "immutable", "inference", "merkle", "eu-ai-act", "compliance", "ml-dsa"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[project.scripts]
+pqc-audit = "pqc_audit_log_fs.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pqc_audit_log_fs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-gpu-driver"
+version = "0.1.0"
+description = "PQC-hardened framework for encrypted CPU-GPU tensor transfers and driver attestation. ML-KEM-768 channel keys, AES-256-GCM per-transfer, ML-DSA driver attestation. Pluggable CUDA/ROCm backends."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "gpu", "cuda", "rocm", "confidential-computing", "ml-kem", "ml-dsa", "inference"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "cryptography>=41.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pqc_gpu_driver"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "tests/", "examples/", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

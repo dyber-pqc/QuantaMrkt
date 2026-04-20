@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-bootloader"
+version = "0.1.0"
+description = "PQC-native signed-boot framework for AI appliances. ML-DSA-65 firmware signatures, measured-boot PCR chains, update-chain verification, manufacturer key-ring."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "bootloader", "firmware", "secure-boot", "ml-dsa", "post-quantum", "appliance", "measured-boot"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Boot",
+]
+dependencies = [
+    "quantumshield>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pqc_bootloader"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
