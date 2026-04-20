@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-reasoning-ledger"
+version = "0.1.0"
+description = "PQC-signed neurosymbolic reasoning ledger. Sign chain-of-thought steps in real time during AI inference. Produces legally defensible, quantum-safe reasoning trails for regulated industries."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "reasoning", "chain-of-thought", "neurosymbolic", "ml-dsa", "audit", "legal", "explainability"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "quantumshield>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pqc_reasoning_ledger"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
