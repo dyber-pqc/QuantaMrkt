@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-ebpf-attestation"
+version = "0.1.0"
+description = "PQC-signed load gate for eBPF programs on AI inference servers. ML-DSA signatures, allow-list policy, audit log for every load attempt."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "ebpf", "kernel", "attestation", "ml-dsa", "linux", "inference"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Operating System Kernels :: Linux",
+]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+
+[project.scripts]
+pqc-bpf = "pqc_ebpf_attestation.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pqc_ebpf_attestation"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "tests/", "examples/", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
