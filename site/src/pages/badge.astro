@@ -1,0 +1,360 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const db = (Astro.locals as any).runtime?.env?.DB;
+
+// Pre-populate with popular scanned models
+let popular: any[] = [];
+if (db) {
+  try {
+    const r = await db
+      .prepare(`SELECT hf_repo_id, model_name, author, risk_level, risk_score, scan_count
+                FROM hndl_scans ORDER BY scan_count DESC, scanned_at DESC LIMIT 12`)
+      .all<any>();
+    popular = r.results || [];
+  } catch {
+    // ignore
+  }
+}
+
+// If user came from a specific scan page via ?repo=, pre-fill
+const initialRepo = Astro.url.searchParams.get('repo') || '';
+---
+
+<MarketingLayout
+  title="HNDL Badge Generator"
+  description="Generate embeddable HNDL risk badges for any HuggingFace model. Copy-ready snippets for Markdown, HTML, RST, AsciiDoc, and BBCode."
+>
+  <main class="mx-auto max-w-5xl px-6 py-10">
+    <!-- Header -->
+    <div class="mb-6">
+      <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">Embed a badge</div>
+      <h1 class="text-3xl md:text-4xl font-bold mb-2">HNDL Badge Generator</h1>
+      <p class="text-gray-400 max-w-3xl">
+        Generate a live-updating risk badge for any HuggingFace model. The badge re-computes on each render,
+        so if you publish a new version or downloads change, the badge reflects it automatically.
+      </p>
+    </div>
+
+    <!-- Input form -->
+    <div class="rounded-xl border border-white/10 bg-navy-800 p-5 mb-6">
+      <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">HuggingFace URL or repo ID</label>
+      <div class="flex gap-2">
+        <input
+          id="repo-input"
+          type="text"
+          value={initialRepo}
+          placeholder="meta-llama/Llama-3.1-8B-Instruct"
+          class="flex-1 rounded-lg border border-white/10 bg-navy-900 px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-electric/50 focus:outline-none focus:ring-2 focus:ring-electric/20"
+          autofocus={!initialRepo}
+        />
+        <button
+          id="generate-btn"
+          class="rounded-lg bg-electric text-navy-900 font-semibold px-5 py-2.5 text-sm hover:bg-electric/90 transition-colors whitespace-nowrap"
+        >Generate</button>
+      </div>
+      <p id="input-error" class="hidden mt-2 text-xs text-red-400"></p>
+    </div>
+
+    <!-- Preview + snippets (hidden until a scan succeeds) -->
+    <section id="result" class="hidden space-y-5">
+      <!-- Live badge preview -->
+      <div class="rounded-xl border border-electric/20 bg-electric/5 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold">Live badge preview</h2>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-gray-500">Style:</span>
+            <button data-style="flat" class="style-btn rounded border border-electric/50 bg-electric/10 px-2 py-0.5 text-[10px] text-electric">flat</button>
+            <button data-style="plastic" class="style-btn rounded border border-white/10 bg-navy-900 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white">plastic</button>
+          </div>
+        </div>
+        <div class="rounded-lg border border-white/10 bg-navy-900/60 p-4 flex flex-wrap items-center gap-3">
+          <img id="badge-img" src="" alt="HNDL badge preview" class="flex-shrink-0" />
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-gray-500 mb-0.5">Links to</div>
+            <a id="badge-link" href="" class="text-xs font-mono text-electric hover:underline break-all"></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Snippet tabs -->
+      <div class="rounded-xl border border-white/10 bg-navy-800 overflow-hidden">
+        <div class="flex flex-wrap gap-0 border-b border-white/5">
+          {['Markdown', 'HTML', 'RST', 'AsciiDoc', 'BBCode', 'URL'].map((name, i) => (
+            <button
+              data-tab={name.toLowerCase()}
+              class:list={[
+                'snippet-tab px-4 py-2.5 text-xs font-medium transition-colors border-b-2',
+                i === 0 ? 'text-electric border-electric' : 'text-gray-400 border-transparent hover:text-white',
+              ]}
+            >{name}</button>
+          ))}
+        </div>
+
+        {/* Snippet bodies */}
+        <div data-body="markdown" class="snippet-body block p-5">
+          <p class="text-xs text-gray-500 mb-2">Paste this into your README.md on GitHub, HuggingFace model card, or any other Markdown host.</p>
+          <div class="relative group">
+            <pre class="rounded-lg border border-white/5 bg-navy-900 p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all"><code id="snippet-markdown"></code></pre>
+            <button data-copy="snippet-markdown" class="copy-btn absolute top-2 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 hover:bg-white/20 transition-opacity">Copy</button>
+          </div>
+        </div>
+        <div data-body="html" class="snippet-body hidden p-5">
+          <p class="text-xs text-gray-500 mb-2">Paste this into your website, blog post, or any HTML page.</p>
+          <div class="relative group">
+            <pre class="rounded-lg border border-white/5 bg-navy-900 p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all"><code id="snippet-html"></code></pre>
+            <button data-copy="snippet-html" class="copy-btn absolute top-2 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 hover:bg-white/20 transition-opacity">Copy</button>
+          </div>
+        </div>
+        <div data-body="rst" class="snippet-body hidden p-5">
+          <p class="text-xs text-gray-500 mb-2">For reStructuredText docs (Python, Sphinx, PyPI README).</p>
+          <div class="relative group">
+            <pre class="rounded-lg border border-white/5 bg-navy-900 p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all"><code id="snippet-rst"></code></pre>
+            <button data-copy="snippet-rst" class="copy-btn absolute top-2 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 hover:bg-white/20 transition-opacity">Copy</button>
+          </div>
+        </div>
+        <div data-body="asciidoc" class="snippet-body hidden p-5">
+          <p class="text-xs text-gray-500 mb-2">For AsciiDoc (Antora, O'Reilly Atlas, Asciidoctor).</p>
+          <div class="relative group">
+            <pre class="rounded-lg border border-white/5 bg-navy-900 p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all"><code id="snippet-asciidoc"></code></pre>
+            <button data-copy="snippet-asciidoc" class="copy-btn absolute top-2 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 hover:bg-white/20 transition-opacity">Copy</button>
+          </div>
+        </div>
+        <div data-body="bbcode" class="snippet-body hidden p-5">
+          <p class="text-xs text-gray-500 mb-2">For phpBB, Discourse (old), vBulletin, and other BBCode-based forums.</p>
+          <div class="relative group">
+            <pre class="rounded-lg border border-white/5 bg-navy-900 p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all"><code id="snippet-bbcode"></code></pre>
+            <button data-copy="snippet-bbcode" class="copy-btn absolute top-2 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 hover:bg-white/20 transition-opacity">Copy</button>
+          </div>
+        </div>
+        <div data-body="url" class="snippet-body hidden p-5">
+          <p class="text-xs text-gray-500 mb-2">Raw badge SVG URL (use directly in any image tag or embed).</p>
+          <div class="relative group">
+            <pre class="rounded-lg border border-white/5 bg-navy-900 p-4 text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap break-all"><code id="snippet-url"></code></pre>
+            <button data-copy="snippet-url" class="copy-btn absolute top-2 right-2 rounded bg-white/10 px-2 py-1 text-[10px] text-gray-300 hover:bg-white/20 transition-opacity">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap gap-2">
+        <a id="view-scan" href="" class="rounded-lg border border-electric/30 bg-electric/10 px-4 py-2 text-xs text-electric hover:bg-electric/20 transition-colors">
+          View full scan →
+        </a>
+        <a id="gen-report" href="" class="rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-xs text-violet-400 hover:bg-violet-500/20 transition-colors">
+          Generate compliance report (PDF) →
+        </a>
+      </div>
+    </section>
+
+    {/* Pre-populated popular models */}
+    {popular.length > 0 && (
+      <section id="popular-section" class="mt-10">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Or pick a popular model</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {popular.map((m: any) => (
+            <button
+              data-repo={m.hf_repo_id}
+              class="popular-btn flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-navy-800/50 px-4 py-2.5 text-left hover:border-electric/30 hover:bg-navy-800 transition-colors"
+            >
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-gray-200 truncate">{m.hf_repo_id}</div>
+                <div class="text-[10px] text-gray-500">{m.scan_count.toLocaleString()} scan{m.scan_count === 1 ? '' : 's'}</div>
+              </div>
+              <span class={`text-[10px] font-bold uppercase ${m.risk_level === 'CRITICAL' ? 'text-red-400' : m.risk_level === 'HIGH' ? 'text-orange-400' : m.risk_level === 'MEDIUM' ? 'text-yellow-400' : 'text-quantum'}`}>{m.risk_level}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <!-- How it works -->
+    <section class="mt-12 rounded-xl border border-white/5 bg-navy-800/30 p-6">
+      <h2 class="text-sm font-semibold mb-3">How badges work</h2>
+      <div class="grid md:grid-cols-3 gap-4 text-xs text-gray-400">
+        <div>
+          <div class="text-electric font-mono mb-1">1. Live</div>
+          <p>Every render fetches the current HNDL score. If the model changes, the badge updates.</p>
+        </div>
+        <div>
+          <div class="text-electric font-mono mb-1">2. Linked</div>
+          <p>Clicking the badge takes readers to the full scan page with breakdown, signatures, and audit trail.</p>
+        </div>
+        <div>
+          <div class="text-electric font-mono mb-1">3. Cached</div>
+          <p>Badges are cached for 10 minutes at the edge, so adding one won't slow your page down.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const input = document.getElementById('repo-input') as HTMLInputElement;
+    const genBtn = document.getElementById('generate-btn') as HTMLButtonElement;
+    const errorEl = document.getElementById('input-error') as HTMLElement;
+    const result = document.getElementById('result') as HTMLElement;
+    const badgeImg = document.getElementById('badge-img') as HTMLImageElement;
+    const badgeLink = document.getElementById('badge-link') as HTMLAnchorElement;
+
+    const snippetEls: Record<string, HTMLElement | null> = {
+      markdown: document.getElementById('snippet-markdown'),
+      html: document.getElementById('snippet-html'),
+      rst: document.getElementById('snippet-rst'),
+      asciidoc: document.getElementById('snippet-asciidoc'),
+      bbcode: document.getElementById('snippet-bbcode'),
+      url: document.getElementById('snippet-url'),
+    };
+
+    let currentStyle: 'flat' | 'plastic' = 'flat';
+
+    function parseRepo(raw: string): string | null {
+      const s = raw.trim();
+      if (!s) return null;
+      const slashForm = s.match(/^[a-zA-Z0-9][a-zA-Z0-9_-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/);
+      if (slashForm) return s;
+      try {
+        const u = new URL(s.startsWith('http') ? s : 'https://' + s);
+        if (!u.hostname.includes('huggingface.co')) return null;
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'datasets' || parts[0] === 'spaces') {
+          return (parts[1] ?? '') + '/' + (parts[2] ?? '');
+        }
+        return (parts[0] ?? '') + '/' + (parts[1] ?? '');
+      } catch {
+        return null;
+      }
+    }
+
+    function updateSnippets(repoId: string) {
+      const badgeUrl = `https://quantamrkt.com/badge/hndl/${repoId}.svg`;
+      const scanUrl = `https://quantamrkt.com/scan/hf/${repoId}`;
+      const reportUrl = `/compliance?repo=${encodeURIComponent(repoId)}`;
+      const label = `HNDL risk — ${repoId}`;
+
+      if (snippetEls.markdown) snippetEls.markdown.textContent = `[![${label}](${badgeUrl})](${scanUrl})`;
+      if (snippetEls.html) snippetEls.html.textContent = `<a href="${scanUrl}"><img src="${badgeUrl}" alt="${label}" /></a>`;
+      if (snippetEls.rst) snippetEls.rst.textContent = `.. image:: ${badgeUrl}\n   :target: ${scanUrl}\n   :alt: ${label}`;
+      if (snippetEls.asciidoc) snippetEls.asciidoc.textContent = `image:${badgeUrl}[${label},link=${scanUrl}]`;
+      if (snippetEls.bbcode) snippetEls.bbcode.textContent = `[url=${scanUrl}][img]${badgeUrl}[/img][/url]`;
+      if (snippetEls.url) snippetEls.url.textContent = badgeUrl;
+
+      if (badgeImg) badgeImg.src = badgeUrl + '?t=' + Date.now();
+      if (badgeLink) {
+        badgeLink.href = scanUrl;
+        badgeLink.textContent = scanUrl;
+      }
+
+      const viewScan = document.getElementById('view-scan') as HTMLAnchorElement;
+      if (viewScan) viewScan.href = scanUrl;
+      const genReport = document.getElementById('gen-report') as HTMLAnchorElement;
+      if (genReport) genReport.href = reportUrl;
+    }
+
+    async function generate(raw: string) {
+      errorEl.classList.add('hidden');
+      const repoId = parseRepo(raw);
+      if (!repoId) {
+        errorEl.textContent = 'Please enter a valid HuggingFace URL or repo ID (e.g., meta-llama/Llama-3.1-8B-Instruct).';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      genBtn.disabled = true;
+      genBtn.textContent = 'Generating...';
+      try {
+        const res = await fetch('/api/scan/hndl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: repoId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({})) as any;
+          throw new Error(err?.error || `Scan failed (HTTP ${res.status})`);
+        }
+        updateSnippets(repoId);
+        result.classList.remove('hidden');
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Update the URL so the page is shareable/bookmarkable
+        const newUrl = new URL(location.href);
+        newUrl.searchParams.set('repo', repoId);
+        history.replaceState({}, '', newUrl.toString());
+      } catch (err: any) {
+        errorEl.textContent = err?.message || 'Failed to scan. Please try again.';
+        errorEl.classList.remove('hidden');
+      } finally {
+        genBtn.disabled = false;
+        genBtn.textContent = 'Generate';
+      }
+    }
+
+    genBtn?.addEventListener('click', () => generate(input.value));
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); generate(input.value); }
+    });
+
+    // Popular model buttons
+    document.querySelectorAll<HTMLButtonElement>('.popular-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const repo = btn.getAttribute('data-repo') || '';
+        input.value = repo;
+        generate(repo);
+      });
+    });
+
+    // Snippet tabs
+    document.querySelectorAll<HTMLButtonElement>('.snippet-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-tab');
+        document.querySelectorAll('.snippet-tab').forEach((t) => {
+          t.classList.remove('text-electric', 'border-electric');
+          t.classList.add('text-gray-400', 'border-transparent');
+        });
+        tab.classList.add('text-electric', 'border-electric');
+        tab.classList.remove('text-gray-400', 'border-transparent');
+        document.querySelectorAll('.snippet-body').forEach((body) => {
+          if ((body as HTMLElement).dataset.body === target) {
+            body.classList.remove('hidden');
+            body.classList.add('block');
+          } else {
+            body.classList.add('hidden');
+            body.classList.remove('block');
+          }
+        });
+      });
+    });
+
+    // Style toggle (flat/plastic — reserved for future: current badge SVG is always 'flat')
+    document.querySelectorAll<HTMLButtonElement>('.style-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.style-btn').forEach((b) => {
+          b.classList.remove('border-electric/50', 'bg-electric/10', 'text-electric');
+          b.classList.add('border-white/10', 'bg-navy-900', 'text-gray-400');
+        });
+        btn.classList.remove('border-white/10', 'bg-navy-900', 'text-gray-400');
+        btn.classList.add('border-electric/50', 'bg-electric/10', 'text-electric');
+        currentStyle = (btn.getAttribute('data-style') as 'flat' | 'plastic') ?? 'flat';
+      });
+    });
+
+    // Copy buttons
+    document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-copy') || '';
+        const el = document.getElementById(id);
+        const text = el?.textContent ?? '';
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = original ?? 'Copy'; }, 1200);
+        } catch {
+          // ignore
+        }
+      });
+    });
+
+    // Auto-run if ?repo= was pre-filled
+    if (input?.value) generate(input.value);
+  </script>
+</MarketingLayout>

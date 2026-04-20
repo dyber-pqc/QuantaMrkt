@@ -1,0 +1,269 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const db = (Astro.locals as any).runtime?.env?.DB;
+
+// Recent high-risk scans as suggestions
+let suggestions: any[] = [];
+if (db) {
+  try {
+    const r = await db
+      .prepare(`SELECT hf_repo_id, model_name, author, risk_level, risk_score, scan_count
+                FROM hndl_scans
+                WHERE risk_level IN ('CRITICAL', 'HIGH')
+                ORDER BY scan_count DESC, scanned_at DESC LIMIT 8`)
+      .all<any>();
+    suggestions = r.results || [];
+  } catch {
+    // ignore
+  }
+}
+
+const initialRepo = Astro.url.searchParams.get('repo') || '';
+const initialSlug = Astro.url.searchParams.get('slug') || '';
+---
+
+<MarketingLayout
+  title="Compliance Reports"
+  description="Generate signed PDF compliance reports for AI models. CNSA 2.0 readiness, EU AI Act Article 12, HNDL assessment, and transparency log excerpts — all in one document."
+>
+  <main class="mx-auto max-w-5xl px-6 py-10">
+    <!-- Header -->
+    <div class="mb-6">
+      <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">Regulatory evidence</div>
+      <h1 class="text-3xl md:text-4xl font-bold mb-2">Compliance Reports</h1>
+      <p class="text-gray-400 max-w-3xl">
+        Generate a multi-page PDF for any model or dataset. Includes HNDL risk assessment, PQC signature chain,
+        CNSA 2.0 and EU AI Act Article 12 mappings, and excerpts from the transparency log.
+        Ready for regulatory submission, legal discovery, and security reviews.
+      </p>
+    </div>
+
+    <!-- Form card -->
+    <div class="rounded-xl border border-white/10 bg-navy-800 p-6 mb-6">
+      <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Model / Dataset / Tool</label>
+      <div class="flex gap-2 mb-3">
+        <input
+          id="subject-input"
+          type="text"
+          value={initialRepo || initialSlug}
+          placeholder="meta-llama/Llama-3.1-8B-Instruct  or  quantmrkt-pqc-mcp-transport"
+          class="flex-1 rounded-lg border border-white/10 bg-navy-900 px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+        />
+        <button
+          id="generate-btn"
+          class="rounded-lg bg-violet-500 text-white font-semibold px-5 py-2.5 text-sm hover:bg-violet-500/90 transition-colors whitespace-nowrap flex items-center gap-2"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Generate PDF
+        </button>
+      </div>
+      <p id="input-error" class="hidden mb-2 text-xs text-red-400"></p>
+      <div class="text-xs text-gray-500">Accepts HuggingFace URLs, <code class="text-gray-400">org/repo</code>, or QuantaMrkt slugs.</div>
+    </div>
+
+    <!-- Feature grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 text-xs text-violet-400 mb-2 uppercase font-semibold tracking-wider">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          Section 1 — HNDL Risk
+        </div>
+        <div class="text-sm text-gray-300 mb-1">Quantified quantum risk</div>
+        <p class="text-xs text-gray-500">Full score breakdown with size, downloads, pipeline, and age factors. Includes shelf-life estimate and migration recommendation.</p>
+      </div>
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 text-xs text-violet-400 mb-2 uppercase font-semibold tracking-wider">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7h3a5 5 0 015 5v0a5 5 0 01-5 5h-3m-6 0H6a5 5 0 01-5-5v0a5 5 0 015-5h3m-1 5h6"/></svg>
+          Section 2 — Signature Chain
+        </div>
+        <div class="text-sm text-gray-300 mb-1">All PQC signatures attached</div>
+        <p class="text-xs text-gray-500">Every ML-DSA signature on the subject with signer DID, algorithm, timestamp, and truncated signature hex.</p>
+      </div>
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 text-xs text-violet-400 mb-2 uppercase font-semibold tracking-wider">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Section 3 — CNSA 2.0
+        </div>
+        <div class="text-sm text-gray-300 mb-1">Readiness mapping</div>
+        <p class="text-xs text-gray-500">Pass/partial/fail checks against CNSA 2.0 PQC requirements. Includes ML-DSA presence, hybrid signing, and transparency trail.</p>
+      </div>
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 text-xs text-violet-400 mb-2 uppercase font-semibold tracking-wider">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          Section 4 — EU AI Act
+        </div>
+        <div class="text-sm text-gray-300 mb-1">Article 12 mapping</div>
+        <p class="text-xs text-gray-500">Automatic logging, tamper-evident chain, long-term retention, auditor access, incident reconstruction — all five Article 12 requirements.</p>
+      </div>
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 text-xs text-violet-400 mb-2 uppercase font-semibold tracking-wider">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          Section 5 — Transparency Log
+        </div>
+        <div class="text-sm text-gray-300 mb-1">Up to 30 recent entries</div>
+        <p class="text-xs text-gray-500">Sequence, action, timestamp, and payload hash for each event touching this subject. Full chain verifiable via /api/transparency/verify.</p>
+      </div>
+      <div class="rounded-xl border border-white/5 bg-navy-800 p-5">
+        <div class="flex items-center gap-2 text-xs text-violet-400 mb-2 uppercase font-semibold tracking-wider">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+          Section 6 — Certification
+        </div>
+        <div class="text-sm text-gray-300 mb-1">SHA-256 content hash</div>
+        <p class="text-xs text-gray-500">Report ID, SHA-256 hash of canonical contents, and step-by-step verification instructions. Regenerate to prove the report wasn't altered.</p>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="rounded-xl border border-white/5 bg-navy-800/50 overflow-hidden mb-10">
+      <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/5">
+        <div class="p-6">
+          <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">Free</div>
+          <div class="flex items-baseline gap-2 mb-3">
+            <span class="text-3xl font-bold">$0</span>
+            <span class="text-sm text-gray-500">/ report</span>
+          </div>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> All 6 sections</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Public PDF download</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> SHA-256 content hash</li>
+            <li class="flex items-center gap-2"><span class="text-yellow-400">!</span> "FREE PREVIEW" watermark</li>
+            <li class="flex items-center gap-2"><span class="text-gray-600">×</span> No ML-DSA signature</li>
+            <li class="flex items-center gap-2"><span class="text-gray-600">×</span> No bulk export</li>
+          </ul>
+        </div>
+        <div class="p-6 bg-violet-500/5">
+          <div class="flex items-center justify-between mb-1">
+            <div class="text-xs uppercase tracking-wider text-violet-400">Pro</div>
+            <span class="text-[10px] rounded-full bg-violet-500/20 text-violet-400 px-2 py-0.5">Coming soon</span>
+          </div>
+          <div class="flex items-baseline gap-2 mb-3">
+            <span class="text-3xl font-bold">$49</span>
+            <span class="text-sm text-gray-500">/ month</span>
+          </div>
+          <ul class="space-y-2 text-sm text-gray-400">
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Everything in Free</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> No watermark</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> ML-DSA-signed PDF</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Bulk export (up to 100 subjects)</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> 12-month report history</li>
+            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Custom branding / CISO name on cover</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    {/* Suggestions: high-risk scans from the scanner */}
+    {suggestions.length > 0 && (
+      <section>
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Generate a report for a high-risk model</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-8">
+          {suggestions.map((m: any) => (
+            <button
+              data-repo={m.hf_repo_id}
+              class="suggest-btn flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-navy-800/50 px-4 py-2.5 text-left hover:border-violet-500/30 hover:bg-navy-800 transition-colors"
+            >
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-gray-200 truncate">{m.hf_repo_id}</div>
+                <div class="text-[10px] text-gray-500">{m.scan_count.toLocaleString()} scan{m.scan_count === 1 ? '' : 's'}</div>
+              </div>
+              <span class={`text-[10px] font-bold uppercase ${m.risk_level === 'CRITICAL' ? 'text-red-400' : 'text-orange-400'}`}>{m.risk_level}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    )}
+  </main>
+
+  <script>
+    const input = document.getElementById('subject-input') as HTMLInputElement;
+    const btn = document.getElementById('generate-btn') as HTMLButtonElement;
+    const errorEl = document.getElementById('input-error') as HTMLElement;
+
+    function parse(raw: string): { slug?: string; repo?: string } | null {
+      const s = raw.trim();
+      if (!s) return null;
+      // HuggingFace URL
+      if (s.startsWith('http')) {
+        try {
+          const u = new URL(s);
+          if (u.hostname.includes('huggingface.co')) {
+            const parts = u.pathname.split('/').filter(Boolean);
+            if (parts[0] === 'datasets' || parts[0] === 'spaces') {
+              return { repo: `${parts[1] ?? ''}/${parts[2] ?? ''}` };
+            }
+            return { repo: `${parts[0] ?? ''}/${parts[1] ?? ''}` };
+          }
+        } catch { return null; }
+      }
+      // org/repo form
+      if (/^[a-zA-Z0-9][a-zA-Z0-9_-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(s)) {
+        return { repo: s };
+      }
+      // QuantaMrkt slug (no slash)
+      if (/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(s)) {
+        return { slug: s };
+      }
+      return null;
+    }
+
+    async function generate(raw: string) {
+      errorEl.classList.add('hidden');
+      const parsed = parse(raw);
+      if (!parsed) {
+        errorEl.textContent = 'Please enter a HuggingFace URL, org/repo, or QuantaMrkt slug.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      btn.disabled = true;
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg> Generating...';
+      try {
+        const res = await fetch('/api/compliance/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({})) as any;
+          throw new Error(j?.error || `Report generation failed (HTTP ${res.status})`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        // Open in new tab so the user can save/print
+        window.open(url, '_blank');
+        // Also set the current URL for shareability
+        const newLoc = new URL(location.href);
+        if (parsed.repo) newLoc.searchParams.set('repo', parsed.repo);
+        if (parsed.slug) newLoc.searchParams.set('slug', parsed.slug);
+        history.replaceState({}, '', newLoc.toString());
+      } catch (err: any) {
+        errorEl.textContent = err?.message || 'Generation failed. Please try again.';
+        errorEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
+    btn?.addEventListener('click', () => generate(input.value));
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); generate(input.value); }
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.suggest-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        const repo = b.getAttribute('data-repo') || '';
+        input.value = repo;
+        generate(repo);
+      });
+    });
+
+    // Auto-run if we arrived with a query param
+    if (input?.value) {
+      // Don't auto-generate on page load — user should click, it's a big download
+    }
+  </script>
+</MarketingLayout>

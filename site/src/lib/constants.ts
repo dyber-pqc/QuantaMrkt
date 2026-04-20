@@ -10,10 +10,9 @@ export const SITE = {
 export const NAV_ITEMS = [
   { label: 'Models', href: '/models' },
   { label: 'Agents', href: '/agents' },
-  { label: 'Explore', href: '/explore' },
   { label: 'Scan', href: '/scan' },
+  { label: 'Compliance', href: '/compliance' },
   { label: 'Chain', href: '/chain' },
-  { label: 'Audit', href: '/audit' },
   { label: 'Download', href: '/download' },
   { label: 'Docs', href: '/docs' },
   { label: 'Dashboard', href: '/dashboard' },
