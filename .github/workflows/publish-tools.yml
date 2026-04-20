@@ -1,0 +1,92 @@
+name: Publish Tools to PyPI
+
+# Publishes every tool under tools/ to PyPI.
+# Safe to re-run: uses --skip-existing, so it never overwrites a version
+# that's already on PyPI.
+#
+# Trigger manually via workflow_dispatch, or automatically when any tool's
+# pyproject.toml changes on main.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: 'Specific tool name to publish (blank = all tools)'
+        required: false
+        default: ''
+  push:
+    branches: [main]
+    paths:
+      - 'tools/*/pyproject.toml'
+
+permissions:
+  contents: read
+
+jobs:
+  list-tools:
+    name: Discover tools to publish
+    runs-on: ubuntu-latest
+    outputs:
+      tools: ${{ steps.discover.outputs.tools }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: List tool packages
+        id: discover
+        run: |
+          if [ -n "${{ github.event.inputs.tool }}" ]; then
+            TOOLS_JSON='["${{ github.event.inputs.tool }}"]'
+          else
+            TOOLS_JSON=$(find tools -mindepth 2 -maxdepth 2 -name pyproject.toml | sed 's|/pyproject.toml||' | sed 's|tools/||' | jq -R . | jq -cs .)
+          fi
+          echo "tools=$TOOLS_JSON"
+          echo "tools=$TOOLS_JSON" >> $GITHUB_OUTPUT
+
+  publish:
+    name: Publish ${{ matrix.tool }}
+    needs: list-tools
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: ${{ fromJSON(needs.list-tools.outputs.tools) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build + twine
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build ${{ matrix.tool }}
+        working-directory: tools/${{ matrix.tool }}
+        run: |
+          python -m build
+          ls -la dist/
+
+      - name: Validate distribution metadata
+        working-directory: tools/${{ matrix.tool }}
+        run: |
+          twine check dist/*
+
+      - name: Upload to PyPI (skip-existing)
+        working-directory: tools/${{ matrix.tool }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_NON_INTERACTIVE: '1'
+        run: |
+          twine upload --skip-existing --verbose dist/*
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### ${{ matrix.tool }}" >> $GITHUB_STEP_SUMMARY
+          PKG_NAME=$(grep '^name' tools/${{ matrix.tool }}/pyproject.toml | head -1 | sed 's/name *= *"\([^"]*\)"/\1/' | tr -d ' ')
+          PKG_VERSION=$(grep '^version' tools/${{ matrix.tool }}/pyproject.toml | head -1 | sed 's/version *= *"\([^"]*\)"/\1/' | tr -d ' ')
+          echo "- Package: \`$PKG_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \`$PKG_VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "- PyPI: https://pypi.org/project/$PKG_NAME/" >> $GITHUB_STEP_SUMMARY
