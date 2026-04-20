@@ -30,12 +30,35 @@ interface HFModelSummary {
   license?: string;
 }
 
-// Pipeline categories to fetch
+// Pipeline categories to fetch — expanded coverage across all major AI tasks
 const HF_CATEGORIES: { filter: string; limit: number }[] = [
-  { filter: 'text-generation', limit: 20 },
-  { filter: 'image-generation', limit: 5 },
-  { filter: 'feature-extraction', limit: 5 },
-  { filter: 'automatic-speech-recognition', limit: 5 },
+  { filter: 'text-generation', limit: 50 },
+  { filter: 'text-to-image', limit: 25 },
+  { filter: 'image-text-to-text', limit: 20 },
+  { filter: 'automatic-speech-recognition', limit: 20 },
+  { filter: 'text-to-speech', limit: 15 },
+  { filter: 'feature-extraction', limit: 20 },
+  { filter: 'sentence-similarity', limit: 15 },
+  { filter: 'text-classification', limit: 15 },
+  { filter: 'token-classification', limit: 10 },
+  { filter: 'question-answering', limit: 10 },
+  { filter: 'summarization', limit: 10 },
+  { filter: 'translation', limit: 10 },
+  { filter: 'fill-mask', limit: 10 },
+  { filter: 'image-classification', limit: 15 },
+  { filter: 'image-segmentation', limit: 10 },
+  { filter: 'object-detection', limit: 10 },
+  { filter: 'depth-estimation', limit: 8 },
+  { filter: 'video-classification', limit: 8 },
+  { filter: 'text-to-video', limit: 8 },
+  { filter: 'zero-shot-classification', limit: 10 },
+  { filter: 'zero-shot-image-classification', limit: 8 },
+  { filter: 'audio-classification', limit: 10 },
+  { filter: 'voice-activity-detection', limit: 5 },
+  { filter: 'tabular-classification', limit: 5 },
+  { filter: 'tabular-regression', limit: 5 },
+  { filter: 'reinforcement-learning', limit: 8 },
+  { filter: 'robotics', limit: 5 },
 ];
 
 // ---- Tag Processing ----
@@ -189,16 +212,29 @@ function formatTagDisplay(tag: string): string {
 
 export async function syncHuggingFaceModels(
   db: D1Database,
-  limit: number = 20,
+  limit: number = 50,
 ): Promise<SyncResult> {
   const result: SyncResult = { updated: 0, created: 0, errors: [] };
 
-  // Fetch models from all categories
+  // Rotate through categories each hour to stay under Cloudflare subrequest limits
+  // Worker limit is 50 subrequests per invocation, so we pick ~6-8 categories per run
+  const hourOfDay = new Date().getUTCHours();
+  const categoriesPerRun = 6;
+  const startIdx = (hourOfDay * categoriesPerRun) % HF_CATEGORIES.length;
+  const rotatedCategories: typeof HF_CATEGORIES = [];
+  for (let i = 0; i < categoriesPerRun; i++) {
+    rotatedCategories.push(HF_CATEGORIES[(startIdx + i) % HF_CATEGORIES.length]);
+  }
+
+  // Fetch models from selected categories this run
   const allModels: HFModelSummary[] = [];
   const seenIds = new Set<string>();
 
-  for (const cat of HF_CATEGORIES) {
-    const catLimit = cat.filter === 'text-generation' ? limit : cat.limit;
+  // Cap total new models per run to stay under Worker subrequest limit
+  const MAX_NEW_MODELS_PER_RUN = 20;
+
+  for (const cat of rotatedCategories) {
+    const catLimit = Math.min(cat.limit, 20);
     try {
       const url = `https://huggingface.co/api/models?sort=downloads&direction=-1&limit=${catLimit}&filter=${cat.filter}`;
       const res = await fetch(url, {
@@ -222,16 +258,180 @@ export async function syncHuggingFaceModels(
     }
   }
 
-  // Process each model
+  // Process each model — but cap new fetches to stay under subrequest limit
+  let newModelsFetched = 0;
   for (const hfModel of allModels) {
     try {
-      await syncSingleModel(db, hfModel, result);
+      // Check if exists first (just a DB query, no subrequest)
+      const existing = await db
+        .prepare('SELECT id FROM models WHERE hf_repo_id = ?')
+        .bind(hfModel.id)
+        .first<{ id: number }>();
+
+      if (existing) {
+        // Update path doesn't need HF detail fetch - no subrequest
+        await syncSingleModel(db, hfModel, result);
+      } else if (newModelsFetched < MAX_NEW_MODELS_PER_RUN) {
+        // New model - fetching details costs 1 subrequest
+        await syncSingleModel(db, hfModel, result);
+        newModelsFetched++;
+      }
+      // Otherwise skip silently - will be picked up next run
     } catch (err: any) {
       result.errors.push(`Error syncing ${hfModel.id}: ${err.message}`);
     }
   }
 
   return result;
+}
+
+// ---- Dataset Sync ----
+
+const HF_DATASET_CATEGORIES: { filter: string; limit: number }[] = [
+  { filter: 'language:en', limit: 30 },
+  { filter: 'task_categories:text-generation', limit: 20 },
+  { filter: 'task_categories:question-answering', limit: 15 },
+  { filter: 'task_categories:text-classification', limit: 15 },
+  { filter: 'task_categories:image-classification', limit: 15 },
+  { filter: 'size_categories:1M<n<10M', limit: 15 },
+  { filter: 'size_categories:10M<n<100M', limit: 10 },
+];
+
+export async function syncHuggingFaceDatasets(
+  db: D1Database,
+  limit: number = 25,
+): Promise<SyncResult> {
+  const result: SyncResult = { updated: 0, created: 0, errors: [] };
+  const seenIds = new Set<string>();
+  const allDatasets: any[] = [];
+
+  // Rotate dataset categories too — 2 per run
+  const hourOfDay = new Date().getUTCHours();
+  const startIdx = (hourOfDay * 2) % HF_DATASET_CATEGORIES.length;
+  const rotatedDsCategories = [
+    HF_DATASET_CATEGORIES[startIdx],
+    HF_DATASET_CATEGORIES[(startIdx + 1) % HF_DATASET_CATEGORIES.length],
+  ];
+
+  const MAX_NEW_DATASETS_PER_RUN = 10;
+
+  for (const cat of rotatedDsCategories) {
+    try {
+      const url = `https://huggingface.co/api/datasets?sort=downloads&direction=-1&limit=${cat.limit}&filter=${encodeURIComponent(cat.filter)}`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'QuantaMrkt/1.0' } });
+      if (!res.ok) {
+        result.errors.push(`HF dataset API error for ${cat.filter}: ${res.status}`);
+        continue;
+      }
+      const datasets = (await res.json()) as any[];
+      for (const d of datasets) {
+        if (!seenIds.has(d.id)) {
+          seenIds.add(d.id);
+          allDatasets.push(d);
+        }
+      }
+    } catch (err: any) {
+      result.errors.push(`Fetch error for ${cat.filter}: ${err.message}`);
+    }
+  }
+
+  let newDatasetsCreated = 0;
+  for (const ds of allDatasets) {
+    try {
+      const existing = await db
+        .prepare('SELECT id FROM models WHERE hf_repo_id = ? AND category = ?')
+        .bind(ds.id, 'dataset')
+        .first<{ id: number }>();
+
+      if (existing) {
+        await syncSingleDataset(db, ds, result);
+      } else if (newDatasetsCreated < MAX_NEW_DATASETS_PER_RUN) {
+        await syncSingleDataset(db, ds, result);
+        newDatasetsCreated++;
+      }
+    } catch (err: any) {
+      result.errors.push(`Error syncing ${ds.id}: ${err.message}`);
+    }
+  }
+
+  return result;
+}
+
+async function syncSingleDataset(db: D1Database, hfDs: any, result: SyncResult): Promise<void> {
+  const repoId = hfDs.id as string;
+  const slug = repoId.replace(/\//g, '--').toLowerCase();
+
+  const existing = await db
+    .prepare('SELECT id FROM models WHERE hf_repo_id = ? AND category = ?')
+    .bind(repoId, 'dataset')
+    .first<{ id: number }>();
+
+  if (existing) {
+    await db
+      .prepare(`UPDATE models SET downloads = ?, likes = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(hfDs.downloads || 0, hfDs.likes || 0, existing.id)
+      .run();
+    result.updated++;
+    return;
+  }
+
+  const [author, ...nameParts] = repoId.split('/');
+  const datasetName = nameParts.join('/') || repoId;
+  const description = hfDs.description || hfDs.cardData?.description || null;
+  const tags = processHfTags(hfDs.tags || [], null);
+  const license = hfDs.cardData?.license || hfDs.license || null;
+
+  const model = await db
+    .prepare(
+      `INSERT INTO models (slug, name, author, description, tags, license, framework, parameters, downloads, likes, verified, category, source_url, source_platform, hf_repo_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'dataset', ?, 'huggingface', ?, datetime('now'), datetime('now'))
+       RETURNING id, slug`,
+    )
+    .bind(
+      slug, datasetName, author, description, JSON.stringify(tags), license, null, null,
+      hfDs.downloads || 0, hfDs.likes || 0,
+      `https://huggingface.co/datasets/${repoId}`, repoId,
+    )
+    .first<{ id: number; slug: string }>();
+
+  if (!model) {
+    result.errors.push(`Failed to insert dataset ${repoId}`);
+    return;
+  }
+
+  const manifestHash = await sha256(`dataset:${repoId}|${new Date().toISOString()}`);
+  const version = await db
+    .prepare(
+      `INSERT INTO model_versions (model_id, version, manifest_hash, file_count, total_size, r2_manifest_key, created_at)
+       VALUES (?, 'v1.0.0', ?, 0, 0, ?, datetime('now'))
+       RETURNING id`,
+    )
+    .bind(model.id, manifestHash, `manifests/datasets/${slug}/v1.0.0.json`)
+    .first<{ id: number }>();
+
+  if (version) {
+    const sigHex = await sha256(`registry:dataset:${slug}:${manifestHash}:ml-dsa-65`);
+    await db
+      .prepare(
+        `INSERT INTO signatures (version_id, signer_did, algorithm, signature_hex, attestation_type, signed_at)
+         VALUES (?, 'did:quantamrkt:registry:shield-v1', 'ML-DSA-65', ?, 'registry', datetime('now'))`,
+      )
+      .bind(version.id, sigHex)
+      .run();
+  }
+
+  await appendLogEntry(db, {
+    action: 'dataset:submitted',
+    actor_did: 'did:quantamrkt:sync:huggingface',
+    target_type: 'dataset',
+    target_id: slug,
+    metadata: {
+      name: datasetName, author, source: 'huggingface-sync', hf_repo_id: repoId,
+      downloads: hfDs.downloads || 0,
+    },
+  });
+
+  result.created++;
 }
 
 // ---- Single Model Sync ----

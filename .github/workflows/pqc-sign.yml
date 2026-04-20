@@ -103,5 +103,6 @@ jobs:
           QUANTAMRKT_API_TOKEN: ${{ secrets.QUANTAMRKT_API_TOKEN }}
           PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
           PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           python -m quantumshield.signing_service --sign-all

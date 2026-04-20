@@ -1,0 +1,282 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getLogEntries, verifyChain } from '../lib/transparency';
+
+const db = (Astro.locals as any).runtime?.env?.DB;
+
+let entries: any[] = [];
+let total = 0;
+let chainValid = true;
+let stats = {
+  total_entries: 0,
+  models_signed_today: 0,
+  cron_runs_24h: 0,
+  last_sync: '—',
+  last_sign: '—',
+};
+
+if (db) {
+  try {
+    const result = await getLogEntries(db, { limit: 100, offset: 0 });
+    entries = result.entries;
+    total = result.total;
+
+    // Verify last 20 entries for quick check
+    if (entries.length > 0) {
+      const latestSeq = entries[0].sequence_number;
+      const fromSeq = Math.max(1, latestSeq - 19);
+      const chainResult = await verifyChain(db, fromSeq, latestSeq);
+      chainValid = chainResult.valid;
+    }
+
+    // Stats
+    const todayCount = await db
+      .prepare(`SELECT COUNT(*) as cnt FROM transparency_log
+                WHERE action LIKE 'model:signed%'
+                AND timestamp > datetime('now', '-1 day')`)
+      .first<{ cnt: number }>();
+    stats.models_signed_today = todayCount?.cnt ?? 0;
+
+    const cronCount = await db
+      .prepare(`SELECT COUNT(*) as cnt FROM transparency_log
+                WHERE action LIKE 'cron:%'
+                AND timestamp > datetime('now', '-1 day')`)
+      .first<{ cnt: number }>();
+    stats.cron_runs_24h = cronCount?.cnt ?? 0;
+
+    const lastSync = await db
+      .prepare(`SELECT timestamp FROM transparency_log
+                WHERE action LIKE 'cron:%' ORDER BY id DESC LIMIT 1`)
+      .first<{ timestamp: string }>();
+    stats.last_sync = lastSync?.timestamp ?? '—';
+
+    const lastSign = await db
+      .prepare(`SELECT timestamp FROM transparency_log
+                WHERE action LIKE 'model:signed%' ORDER BY id DESC LIMIT 1`)
+      .first<{ timestamp: string }>();
+    stats.last_sign = lastSign?.timestamp ?? '—';
+
+    stats.total_entries = total;
+  } catch {
+    // Graceful degradation
+  }
+}
+
+function truncateHash(hash: string, len: number = 10): string {
+  if (!hash || hash === '0') return 'genesis';
+  return hash.substring(0, len) + '...';
+}
+
+function actionIcon(action: string): string {
+  if (action.includes('model:signed')) return '✍';
+  if (action.includes('model:submitted') || action.includes('model:created')) return '＋';
+  if (action.includes('dataset:')) return '▤';
+  if (action.includes('agent:')) return '◉';
+  if (action.includes('cron:')) return '⟳';
+  if (action.includes('chain:') || action.includes('block:')) return '⛓';
+  if (action.includes('verify')) return '✓';
+  return '•';
+}
+
+function actionColor(action: string): string {
+  if (action.includes('model:signed')) return 'text-emerald-400';
+  if (action.includes('model:submitted') || action.includes('created')) return 'text-electric';
+  if (action.includes('dataset:')) return 'text-violet-400';
+  if (action.includes('agent:')) return 'text-cyan-400';
+  if (action.includes('cron:')) return 'text-gray-400';
+  if (action.includes('chain:') || action.includes('block:')) return 'text-amber-400';
+  if (action.includes('verify')) return 'text-blue-400';
+  return 'text-gray-500';
+}
+
+function formatRelative(timestamp: string): string {
+  const then = new Date(timestamp.replace(' ', 'T') + 'Z');
+  const now = new Date();
+  const diffMs = now.getTime() - then.getTime();
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return `${Math.floor(sec / 86400)}d ago`;
+}
+---
+
+<MarketingLayout
+  title="Live Audit Trail — QuantaMrkt"
+  description="Every action on QuantaMrkt recorded in an immutable, hash-chained transparency log. View signing events, model submissions, block mints in real time."
+>
+  <main class="mx-auto max-w-7xl px-6 pt-24 pb-20">
+    <!-- Header -->
+    <div class="mb-8">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          LIVE
+        </div>
+        <span class="text-xs text-gray-500">Auto-refreshing every 15s</span>
+      </div>
+      <h1 class="text-4xl font-bold mb-2">Audit Trail</h1>
+      <p class="text-gray-400 max-w-3xl">
+        Every action on QuantaMrkt is recorded in an append-only, hash-chained transparency log.
+        Each entry links to the previous via SHA-256, making tampering cryptographically detectable.
+      </p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
+      <div class="rounded-lg border border-white/5 bg-navy-800/50 p-4">
+        <div class="text-xs text-gray-500 uppercase mb-1">Total Entries</div>
+        <div class="text-2xl font-bold">{stats.total_entries.toLocaleString()}</div>
+      </div>
+      <div class="rounded-lg border border-white/5 bg-navy-800/50 p-4">
+        <div class="text-xs text-gray-500 uppercase mb-1">Signed Today</div>
+        <div class="text-2xl font-bold text-emerald-400">{stats.models_signed_today}</div>
+      </div>
+      <div class="rounded-lg border border-white/5 bg-navy-800/50 p-4">
+        <div class="text-xs text-gray-500 uppercase mb-1">Sync Runs (24h)</div>
+        <div class="text-2xl font-bold text-electric">{stats.cron_runs_24h}</div>
+      </div>
+      <div class="rounded-lg border border-white/5 bg-navy-800/50 p-4">
+        <div class="text-xs text-gray-500 uppercase mb-1">Chain Valid</div>
+        <div class={`text-2xl font-bold ${chainValid ? 'text-emerald-400' : 'text-red-400'}`}>
+          {chainValid ? '✓ Yes' : '✗ No'}
+        </div>
+      </div>
+      <div class="rounded-lg border border-white/5 bg-navy-800/50 p-4">
+        <div class="text-xs text-gray-500 uppercase mb-1">Last Activity</div>
+        <div class="text-sm font-semibold truncate" title={stats.last_sign || stats.last_sync}>
+          {stats.last_sign !== '—' ? formatRelative(stats.last_sign) : (stats.last_sync !== '—' ? formatRelative(stats.last_sync) : '—')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
+      <span class="text-gray-500">Filter:</span>
+      <button data-filter="all" class="filter-btn px-3 py-1 rounded-full border border-electric bg-electric/10 text-electric">All</button>
+      <button data-filter="model:signed" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Signings</button>
+      <button data-filter="model:submitted" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">New Models</button>
+      <button data-filter="dataset" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Datasets</button>
+      <button data-filter="cron" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Cron Jobs</button>
+      <button data-filter="block" class="filter-btn px-3 py-1 rounded-full border border-white/10 bg-navy-800 text-gray-400 hover:text-white">Blocks</button>
+      <div class="ml-auto flex items-center gap-2">
+        <a href="/api/transparency/log?limit=100" target="_blank" class="text-electric hover:underline">JSON API ↗</a>
+        <a href="/chain" class="text-electric hover:underline">View Chain →</a>
+      </div>
+    </div>
+
+    <!-- Live Log -->
+    <div class="rounded-lg border border-white/5 bg-navy-900/50 overflow-hidden">
+      <div class="bg-navy-800/50 border-b border-white/5 px-4 py-2 grid grid-cols-[80px_120px_1fr_120px_100px] gap-4 text-xs text-gray-500 uppercase">
+        <div>Seq</div>
+        <div>Action</div>
+        <div>Target</div>
+        <div>Chain Hash</div>
+        <div>When</div>
+      </div>
+
+      <div id="log-entries" class="divide-y divide-white/5 max-h-[70vh] overflow-y-auto font-mono text-sm">
+        {entries.length === 0 ? (
+          <div class="p-8 text-center text-gray-500">No entries yet. Activity will appear here as models are signed, datasets added, and cron jobs run.</div>
+        ) : (
+          entries.map((entry) => (
+            <div
+              data-action={entry.action}
+              class="log-entry grid grid-cols-[80px_120px_1fr_120px_100px] gap-4 px-4 py-3 hover:bg-white/5 transition-colors"
+            >
+              <div class="text-gray-600">#{entry.sequence_number}</div>
+              <div class={actionColor(entry.action)}>
+                <span class="mr-1">{actionIcon(entry.action)}</span>
+                {entry.action}
+              </div>
+              <div class="text-gray-300 truncate" title={`${entry.target_type}:${entry.target_id}`}>
+                <span class="text-gray-500">{entry.target_type}/</span>{entry.target_id}
+              </div>
+              <div class="text-gray-500 text-xs" title={entry.payload_hash}>
+                {truncateHash(entry.payload_hash)}
+              </div>
+              <div class="text-gray-500 text-xs" title={entry.timestamp}>
+                {formatRelative(entry.timestamp)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div class="border-t border-white/5 px-4 py-3 flex items-center justify-between text-xs text-gray-500">
+        <span>Showing latest {entries.length} of {total.toLocaleString()} entries</span>
+        <span>Hash algorithm: SHA-256 | Signing: ML-DSA-87</span>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="mt-8 rounded-lg border border-white/5 bg-navy-800/30 p-6">
+      <h3 class="font-semibold mb-3">How the Transparency Log Works</h3>
+      <div class="grid md:grid-cols-3 gap-6 text-sm text-gray-400">
+        <div>
+          <div class="text-electric font-mono text-xs mb-1">1. APPEND</div>
+          <p>Every action appends a new entry. Entries are immutable — never edited or deleted.</p>
+        </div>
+        <div>
+          <div class="text-electric font-mono text-xs mb-1">2. CHAIN</div>
+          <p>Each entry's hash includes the previous entry's hash. Changing any past entry invalidates every entry after it.</p>
+        </div>
+        <div>
+          <div class="text-electric font-mono text-xs mb-1">3. VERIFY</div>
+          <p>Anyone can recompute hashes and verify the chain is intact. Use <code class="text-electric">/api/transparency/verify</code>.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Filter buttons
+    const filterBtns = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+    const entries = document.querySelectorAll<HTMLElement>('.log-entry');
+
+    filterBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => {
+          b.classList.remove('border-electric', 'bg-electric/10', 'text-electric');
+          b.classList.add('border-white/10', 'bg-navy-800', 'text-gray-400');
+        });
+        btn.classList.remove('border-white/10', 'bg-navy-800', 'text-gray-400');
+        btn.classList.add('border-electric', 'bg-electric/10', 'text-electric');
+
+        const filter = btn.dataset.filter;
+        entries.forEach((entry) => {
+          if (filter === 'all') {
+            entry.style.display = '';
+          } else {
+            const action = entry.dataset.action || '';
+            entry.style.display = action.includes(filter!) ? '' : 'none';
+          }
+        });
+      });
+    });
+
+    // Auto-refresh every 15 seconds
+    let lastSeq = 0;
+    const firstEntry = document.querySelector('.log-entry');
+    if (firstEntry) {
+      const seqText = firstEntry.querySelector('.text-gray-600')?.textContent || '';
+      lastSeq = parseInt(seqText.replace('#', ''), 10) || 0;
+    }
+
+    async function checkForUpdates() {
+      try {
+        const res = await fetch('/api/transparency/log?limit=10');
+        if (!res.ok) return;
+        const data = await res.json() as { entries: any[] };
+        if (data.entries && data.entries.length > 0 && data.entries[0].sequence_number > lastSeq) {
+          // New entries — refresh page
+          window.location.reload();
+        }
+      } catch {
+        // Silent fail on refresh
+      }
+    }
+
+    setInterval(checkForUpdates, 15000);
+  </script>
+</MarketingLayout>

@@ -14,13 +14,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    // Require authentication
-    const user = await getApiUser(locals, request);
-    if (!user) {
-      return json({ error: 'Unauthorized. Sign in to mint blocks.' }, 401);
-    }
+    const env = (locals as any).runtime.env;
+    const db = env.DB as D1Database;
 
-    const db = (locals as any).runtime.env.DB as D1Database;
+    // Allow either: logged-in user OR valid cron secret (for automated signing)
+    const cronSecret = request.headers.get('x-cron-secret');
+    const isAuthorizedCron = cronSecret && env.CRON_SECRET && cronSecret === env.CRON_SECRET;
+
+    if (!isAuthorizedCron) {
+      const user = await getApiUser(locals, request);
+      if (!user) {
+        return json({ error: 'Unauthorized. Sign in or provide valid cron secret.' }, 401);
+      }
+    }
 
     const block = await createBlock(db);
 

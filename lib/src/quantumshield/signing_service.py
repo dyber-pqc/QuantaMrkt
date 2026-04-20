@@ -218,6 +218,27 @@ class PQCSigningService:
         except Exception as exc:
             print(f"Warning: could not save public key: {exc}")
 
+        # Auto-mint a new blockchain block if we signed anything
+        if results["signed"] > 0:
+            try:
+                mint_headers = dict(headers)
+                cron_secret = os.environ.get("CRON_SECRET")
+                if cron_secret:
+                    mint_headers["X-Cron-Secret"] = cron_secret
+                mint_resp = httpx.post(
+                    f"{API_URL}/api/chain/mint",
+                    headers=mint_headers,
+                    timeout=30,
+                )
+                if mint_resp.status_code in (200, 201):
+                    block_data = mint_resp.json()
+                    block_num = block_data.get("block_number", "?")
+                    print(f"Minted blockchain block #{block_num} containing signing events.")
+                else:
+                    print(f"Note: block mint returned HTTP {mint_resp.status_code} (may be no pending entries)")
+            except Exception as exc:
+                print(f"Warning: could not mint block: {exc}")
+
         return results
 
 

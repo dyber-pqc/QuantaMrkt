@@ -1,0 +1,61 @@
+name: Hourly HuggingFace Sync
+
+on:
+  schedule:
+    # Every hour at :15 past
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync HF models + datasets + auto-mint block
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Triggering sync at $(date -u)"
+          response=$(curl -sS -w "\nHTTP_STATUS:%{http_code}" \
+            -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            https://quantamrkt.com/api/cron/sync-all)
+
+          http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+          body=$(echo "$response" | sed '/HTTP_STATUS:/d')
+
+          echo "HTTP Status: $http_status"
+          echo "Response body:"
+          echo "$body" | head -60
+
+          if [ "$http_status" -ne 200 ]; then
+            echo "::error::Sync failed with HTTP $http_status"
+            exit 1
+          fi
+
+          # Extract key metrics for summary
+          created=$(echo "$body" | grep -o '"created":[0-9]*' | head -1 | cut -d: -f2)
+          updated=$(echo "$body" | grep -o '"updated":[0-9]*' | head -1 | cut -d: -f2)
+          block_minted=$(echo "$body" | grep -o '"minted":\(true\|false\)' | head -1 | cut -d: -f2)
+          duration=$(echo "$body" | grep -o '"duration_ms":[0-9]*' | head -1 | cut -d: -f2)
+
+          echo "### Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Models created: ${created:-0}" >> $GITHUB_STEP_SUMMARY
+          echo "- Models updated: ${updated:-0}" >> $GITHUB_STEP_SUMMARY
+          echo "- Block minted: ${block_minted:-unknown}" >> $GITHUB_STEP_SUMMARY
+          echo "- Duration: ${duration:-0}ms" >> $GITHUB_STEP_SUMMARY
+
+          # Save created count for signing decision
+          echo "created=${created:-0}" >> $GITHUB_OUTPUT
+        id: sync
+
+      - name: Trigger PQC signing workflow if new models were created
+        if: steps.sync.outputs.created != '0' && steps.sync.outputs.created != ''
+        env:
+          GH_TOKEN: ${{ secrets.QUANTAMRKT_API_TOKEN }}
+        run: |
+          echo "New models created (${{ steps.sync.outputs.created }}) — triggering PQC signing..."
+          gh workflow run pqc-sign.yml --repo dyber-pqc/QuantaMrkt
+          echo "PQC signing workflow dispatched"
