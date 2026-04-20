@@ -138,6 +138,19 @@ function flattenTree(nodes: FileNode[], depth: number = 0): FileNode[] {
 const fileTree = flattenTree(buildFileTree(model.files));
 const totalSize = model.files.reduce((s: number, f: any) => s + (f.size || 0), 0);
 const uniqueSigners = [...new Set(model.signatures.map((s: any) => s.signer_did))];
+
+// Build GitHub blob URL base if source is github (for file source links)
+function githubBlobBase(sourceUrl: string | null | undefined): string | null {
+  if (!sourceUrl || !sourceUrl.includes('github.com')) return null;
+  // Convert .../tree/main/... -> .../blob/main/...
+  // Also handle .../tree/<branch>/... and bare repo URLs
+  if (sourceUrl.includes('/tree/')) {
+    return sourceUrl.replace('/tree/', '/blob/');
+  }
+  // Bare repo URL (no tree) — default to main branch
+  return sourceUrl.replace(/\/$/, '') + '/blob/main';
+}
+const githubBase = githubBlobBase(model.source_url);
 ---
 
 <MarketingLayout title={`${model.author}/${model.name}`} description={model.description || ''}>
@@ -472,7 +485,21 @@ quantumshield verify {model.author}/{model.name}</pre>
                 <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                 <h2 class="text-sm font-semibold text-gray-300">File Manifest</h2>
               </div>
-              <span class="text-xs text-gray-600">{model.files.length} files &middot; {formatSize(totalSize)} &middot; SHA3-256</span>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-600">{model.files.length} files &middot; {formatSize(totalSize)} &middot; SHA3-256</span>
+                {githubBase && (
+                  <a
+                    href={model.source_url}
+                    target="_blank"
+                    rel="noopener"
+                    class="inline-flex items-center gap-1 text-xs text-electric hover:text-electric-400 transition-colors"
+                    title="View source on GitHub"
+                  >
+                    <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd" /></svg>
+                    View on GitHub
+                  </a>
+                )}
+              </div>
             </div>
             {model.files.length > 0 ? (
               <div class="overflow-x-auto">
@@ -494,7 +521,19 @@ quantumshield verify {model.author}/{model.name}</pre>
                             ) : (
                               <svg class="h-4 w-4 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             )}
-                            <span class={`font-mono ${node.isDir ? 'text-electric/80 font-medium' : 'text-gray-300'}`}>{node.name}</span>
+                            {node.isDir ? (
+                              <span class="font-mono text-electric/80 font-medium">{node.name}</span>
+                            ) : githubBase ? (
+                              <a
+                                href={`${githubBase}/${node.path}`}
+                                target="_blank"
+                                rel="noopener"
+                                class="font-mono text-gray-300 hover:text-electric transition-colors"
+                                title={`View ${node.path} on GitHub`}
+                              >{node.name}</a>
+                            ) : (
+                              <span class="font-mono text-gray-300">{node.name}</span>
+                            )}
                           </div>
                         </td>
                         <td class="px-5 py-2 hidden md:table-cell">
