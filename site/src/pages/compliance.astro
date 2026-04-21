@@ -47,7 +47,7 @@ const initialSlug = Astro.url.searchParams.get('slug') || '';
           id="subject-input"
           type="text"
           value={initialRepo || initialSlug}
-          placeholder="meta-llama/Llama-3.1-8B-Instruct  or  quantmrkt-pqc-mcp-transport"
+          placeholder="https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
           class="flex-1 rounded-lg border border-white/10 bg-navy-900 px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
         />
         <button
@@ -61,7 +61,13 @@ const initialSlug = Astro.url.searchParams.get('slug') || '';
         </button>
       </div>
       <p id="input-error" class="hidden mb-2 text-xs text-red-400"></p>
-      <div class="text-xs text-gray-500">Accepts HuggingFace URLs, <code class="text-gray-400">org/repo</code>, or QuantaMrkt slugs.</div>
+      <div class="text-xs text-gray-500">
+        Accepts any of:
+        <code class="text-gray-400">https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct</code> ·
+        <code class="text-gray-400">huggingface.co/meta-llama/Llama-3.1-8B-Instruct</code> ·
+        <code class="text-gray-400">meta-llama/Llama-3.1-8B-Instruct</code> ·
+        <code class="text-gray-400">quantmrkt-pqc-mcp-transport</code>
+      </div>
     </div>
 
     <!-- Feature grid -->
@@ -116,41 +122,18 @@ const initialSlug = Astro.url.searchParams.get('slug') || '';
       </div>
     </div>
 
-    <!-- Pricing -->
-    <div class="rounded-xl border border-white/5 bg-navy-800/50 overflow-hidden mb-10">
-      <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/5">
-        <div class="p-6">
-          <div class="text-xs uppercase tracking-wider text-gray-500 mb-1">Free</div>
-          <div class="flex items-baseline gap-2 mb-3">
-            <span class="text-3xl font-bold">$0</span>
-            <span class="text-sm text-gray-500">/ report</span>
-          </div>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> All 6 sections</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Public PDF download</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> SHA-256 content hash</li>
-            <li class="flex items-center gap-2"><span class="text-yellow-400">!</span> "FREE PREVIEW" watermark</li>
-            <li class="flex items-center gap-2"><span class="text-gray-600">×</span> No ML-DSA signature</li>
-            <li class="flex items-center gap-2"><span class="text-gray-600">×</span> No bulk export</li>
-          </ul>
+    <!-- Free-forever banner -->
+    <div class="rounded-xl border border-quantum/20 bg-quantum/[0.04] p-6 mb-10">
+      <div class="flex items-start gap-4">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-quantum/10 flex-shrink-0">
+          <svg class="h-5 w-5 text-quantum" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
         </div>
-        <div class="p-6 bg-violet-500/5">
-          <div class="flex items-center justify-between mb-1">
-            <div class="text-xs uppercase tracking-wider text-violet-400">Pro</div>
-            <span class="text-[10px] rounded-full bg-violet-500/20 text-violet-400 px-2 py-0.5">Coming soon</span>
-          </div>
-          <div class="flex items-baseline gap-2 mb-3">
-            <span class="text-3xl font-bold">$49</span>
-            <span class="text-sm text-gray-500">/ month</span>
-          </div>
-          <ul class="space-y-2 text-sm text-gray-400">
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Everything in Free</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> No watermark</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> ML-DSA-signed PDF</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Bulk export (up to 100 subjects)</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> 12-month report history</li>
-            <li class="flex items-center gap-2"><span class="text-quantum">✓</span> Custom branding / CISO name on cover</li>
-          </ul>
+        <div class="flex-1">
+          <h3 class="text-base font-semibold text-quantum mb-1">Free for everyone, forever</h3>
+          <p class="text-sm text-gray-400 leading-relaxed">
+            Every compliance report is fully featured — all 6 sections, no watermarks, unlimited generation, no login required.
+            We want post-quantum attestation to be the default, not a paywalled upgrade.
+          </p>
         </div>
       </div>
     </div>
@@ -183,29 +166,49 @@ const initialSlug = Astro.url.searchParams.get('slug') || '';
     const errorEl = document.getElementById('input-error') as HTMLElement;
 
     function parse(raw: string): { slug?: string; repo?: string } | null {
-      const s = raw.trim();
+      let s = (raw || '').trim();
       if (!s) return null;
-      // HuggingFace URL
-      if (s.startsWith('http')) {
+
+      // Normalize protocol-less URLs: "huggingface.co/foo/bar" -> "https://..."
+      if (/^(huggingface\.co|github\.com|hf\.co|www\.huggingface\.co)\b/i.test(s)) {
+        s = 'https://' + s;
+      }
+
+      // Full URL form (https://huggingface.co/..., https://hf.co/..., etc.)
+      if (/^https?:\/\//i.test(s)) {
         try {
           const u = new URL(s);
-          if (u.hostname.includes('huggingface.co')) {
-            const parts = u.pathname.split('/').filter(Boolean);
+          const host = u.hostname.toLowerCase();
+          const parts = u.pathname.split('/').filter(Boolean);
+          if (host.includes('huggingface.co') || host === 'hf.co') {
             if (parts[0] === 'datasets' || parts[0] === 'spaces') {
-              return { repo: `${parts[1] ?? ''}/${parts[2] ?? ''}` };
+              if (parts.length >= 3) return { repo: `${parts[1]}/${parts[2]}` };
+              return null;
             }
-            return { repo: `${parts[0] ?? ''}/${parts[1] ?? ''}` };
+            if (parts.length >= 2) return { repo: `${parts[0]}/${parts[1]}` };
+            return null;
           }
-        } catch { return null; }
+          if (host === 'quantamrkt.com' || host === 'www.quantamrkt.com') {
+            const mIdx = parts.indexOf('models');
+            if (mIdx >= 0 && parts[mIdx + 1]) return { slug: parts[mIdx + 1] };
+            const fIdx = parts.indexOf('files');
+            if (fIdx >= 0 && parts[fIdx + 1]) return { slug: parts[fIdx + 1] };
+          }
+        } catch {
+          return null;
+        }
       }
-      // org/repo form
-      if (/^[a-zA-Z0-9][a-zA-Z0-9_-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(s)) {
+
+      // org/repo form (exactly one slash)
+      if (/^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(s)) {
         return { repo: s };
       }
+
       // QuantaMrkt slug (no slash)
-      if (/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(s)) {
+      if (/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(s)) {
         return { slug: s };
       }
+
       return null;
     }
 

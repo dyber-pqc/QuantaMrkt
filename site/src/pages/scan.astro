@@ -59,7 +59,7 @@ const riskTint: Record<string, string> = {
         <form id="scan-form" class="flex flex-col sm:flex-row gap-3">
           <input
             id="hf-url-input"
-            type="url"
+            type="text"
             placeholder="https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
             class="flex-1 rounded-xl border border-white/10 bg-navy-800 px-5 py-3.5 text-sm text-white placeholder-gray-500 focus:border-electric/50 focus:ring-2 focus:ring-electric/20 focus:outline-none transition-all"
             required
@@ -519,13 +519,31 @@ const riskTint: Record<string, string> = {
     }
   }
 
-  function extractRepoId(url) {
+  function extractRepoId(raw) {
+    let s = String(raw || '').trim();
+    if (!s) return null;
+
+    // Already in "org/repo" form
+    if (/^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(s)) {
+      return s;
+    }
+
+    // Normalize protocol-less URLs
+    if (/^(huggingface\.co|hf\.co|www\.huggingface\.co)\b/i.test(s)) {
+      s = 'https://' + s;
+    }
+
     try {
-      const u = new URL(url);
-      if (!u.hostname.includes('huggingface.co')) return null;
+      const u = new URL(s);
+      const host = u.hostname.toLowerCase();
+      if (!(host.includes('huggingface.co') || host === 'hf.co')) return null;
       const parts = u.pathname.split('/').filter(Boolean);
-      if (parts.length < 2) return null;
-      return parts[0] + '/' + parts[1];
+      if (parts[0] === 'datasets' || parts[0] === 'spaces') {
+        if (parts.length >= 3) return parts[1] + '/' + parts[2];
+        return null;
+      }
+      if (parts.length >= 2) return parts[0] + '/' + parts[1];
+      return null;
     } catch {
       return null;
     }
