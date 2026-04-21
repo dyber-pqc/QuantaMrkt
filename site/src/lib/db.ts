@@ -76,6 +76,9 @@ export interface Agent {
   capabilities_json: string | null;
   status: string;
   created_at: string;
+  source_url?: string | null;
+  platform_signer_did?: string | null;
+  platform_signature?: string | null;
 }
 
 export interface DbUser {

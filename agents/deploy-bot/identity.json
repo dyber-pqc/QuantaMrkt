@@ -1,0 +1,13 @@
+{
+  "name": "deploy-bot",
+  "did": "did:pqaid:PLACEHOLDER_REPLACE_WITH_REAL_KEY",
+  "algorithm": "ML-DSA-65",
+  "public_key": "PLACEHOLDER_REPLACE_WITH_REAL_PUBKEY_HEX",
+  "capabilities": ["execute:deploy", "read:configs", "write:logs"],
+  "created_at": "PLACEHOLDER",
+  "status": "active",
+  "registry_url": "https://quantamrkt.com/agents/deploy-bot",
+  "platform_signature": "PLACEHOLDER_REPLACE_WITH_PLATFORM_ML_DSA_87_SIGNATURE",
+  "platform_signer_did": "did:web:quantamrkt.com",
+  "note": "This file is auto-populated by the seed-agents.yml GitHub Action using real liboqs ML-DSA keys. Until then these are placeholder values."
+}

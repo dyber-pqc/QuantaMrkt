@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-agent-research-assistant"
+version = "0.1.0"
+description = "RAG research agent that only reads signed corpora and signs every summary"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "agent", "ml-dsa", "quantumshield", "rag", "provenance", "research"]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "pqc-rag-signing>=0.1.0",
+    "pqc-content-provenance>=0.1.0",
+]
+
+[project.scripts]
+research-assistant = "pqc_agent_research_assistant.agent:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

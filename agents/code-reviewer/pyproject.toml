@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-agent-code-reviewer"
+version = "0.1.0"
+description = "PQC-authenticated code reviewer that posts signed lint reports over MCP"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "agent", "ml-dsa", "quantumshield", "mcp", "lint", "code-review"]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "pqc-mcp-transport>=0.1.0",
+    "pqc-lint>=0.1.0",
+]
+
+[project.scripts]
+code-reviewer = "pqc_agent_code_reviewer.agent:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

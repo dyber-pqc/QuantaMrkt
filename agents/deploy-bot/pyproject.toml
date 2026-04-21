@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-agent-deploy-bot"
+version = "0.1.0"
+description = "Deploys ML-DSA-signed firmware to edge devices and logs every rollout"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "agent", "ml-dsa", "quantumshield", "bootloader", "deploy", "edge"]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "pqc-bootloader>=0.1.0",
+    "pqc-audit-log-fs>=0.1.0",
+]
+
+[project.scripts]
+deploy-bot = "pqc_agent_deploy_bot.agent:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

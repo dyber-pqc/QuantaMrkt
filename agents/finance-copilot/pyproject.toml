@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pqc-agent-finance-copilot"
+version = "0.1.0"
+description = "PQC-signed financial analysis copilot with immutable audit trail"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Dyber PQC" }]
+keywords = ["pqc", "agent", "ml-dsa", "quantumshield", "finance", "audit", "provenance"]
+dependencies = [
+    "quantumshield>=0.1.0",
+    "pqc-content-provenance>=0.1.0",
+    "pqc-audit-log-fs>=0.1.0",
+]
+
+[project.scripts]
+finance-copilot = "pqc_agent_finance_copilot.agent:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

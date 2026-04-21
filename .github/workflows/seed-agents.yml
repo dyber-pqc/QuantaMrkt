@@ -1,0 +1,69 @@
+name: Seed Agents (Real ML-DSA Keys)
+
+# Generates real ML-DSA keypairs for each agent under agents/, signs each
+# agent's identity with the platform ML-DSA-87 key, and updates D1 with the
+# real DIDs + public keys + source URLs.
+#
+# Run manually. After this runs once, the placeholder DIDs in the registry
+# are replaced with cryptographically real ones.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'agents/*/identity.json'
+      - '.github/workflows/seed-agents.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  seed:
+    name: Generate real agent identities + sign with ML-DSA-87
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.QUANTAMRKT_API_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install liboqs C library (pinned to 0.14.0)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libssl-dev
+          git clone --branch 0.14.0 --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+          cd /tmp/liboqs
+          mkdir build && cd build
+          cmake -GNinja -DBUILD_SHARED_LIBS=ON ..
+          ninja
+          sudo ninja install
+          sudo ldconfig
+
+      - name: Install Python deps
+        run: |
+          pip install liboqs-python==0.14.1 httpx
+
+      - name: Seed agent identities
+        env:
+          QUANTAMRKT_API_URL: https://quantamrkt.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
+          PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
+        run: |
+          python scripts/seed_agents.py
+
+      - name: Commit updated identity.json files
+        run: |
+          git config user.name "quantamrkt-bot"
+          git config user.email "bot@quantamrkt.com"
+          git add agents/*/identity.json
+          if git diff --cached --quiet; then
+            echo "No identity changes to commit"
+          else
+            git commit -m "Seed agents with real ML-DSA keys [skip ci]"
+            git push
+          fi
