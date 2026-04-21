@@ -63,7 +63,18 @@ jobs:
           git add agents/*/identity.json
           if git diff --cached --quiet; then
             echo "No identity changes to commit"
-          else
-            git commit -m "Seed agents with real ML-DSA keys [skip ci]"
-            git push
+            exit 0
           fi
+          git commit -m "Seed agents with real ML-DSA keys [skip ci]"
+          # Retry push up to 3 times with pull --rebase in between —
+          # handles the hourly cron workflow racing with us on main.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed identity updates (attempt $attempt)"
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt; rebasing and retrying..."
+            git pull --rebase origin main
+          done
+          echo "::warning::Could not push updated identity.json files after 3 attempts. D1 was updated successfully; repo is lagging."
+          exit 0   # Don't fail the job — D1 write succeeded, which is what matters
