@@ -10,39 +10,141 @@ let stats = { modelCount: 0, agentCount: 0, verificationCount: 0 };
 let activity: any[] = [];
 let userModels: any[] = [];
 let dbUser: any = null;
+let watchlist: any[] = [];
+let platformPulse = {
+  models: 0,
+  datasets: 0,
+  tools: 0,
+  agents: 0,
+  pqc_signatures: 0,
+  total_signatures: 0,
+  blocks: 0,
+  transparency_entries: 0,
+  entries_last_24h: 0,
+  hndl_critical: 0,
+  hndl_high: 0,
+  last_sync: '',
+  last_activity: '',
+};
+let publicFeed: any[] = [];
 
 if (db && user) {
   dbUser = await getUserByGithubId(db, (user as any).id ?? (user as any).github_id);
   if (dbUser) {
     stats = await getUserStats(db, dbUser.id);
-    activity = await getActivity(db, { userId: dbUser.id, limit: 5 });
+    activity = await getActivity(db, { userId: dbUser.id, limit: 8 });
     userModels = await getUserModels(db, dbUser.login);
+
+    // Watchlist with risk + PQC sig hydration
+    const wl = await db
+      .prepare(
+        `SELECT w.slug, w.subject_kind, w.added_at,
+                m.name, m.author, m.downloads, m.verified, m.category,
+                h.risk_level, h.risk_score, h.shelf_life_years,
+                hs.risk_level as hs_risk, hs.risk_score as hs_score,
+                hs.scan_count,
+                (SELECT COUNT(*) FROM signatures s
+                   JOIN model_versions v ON s.version_id = v.id
+                   WHERE v.model_id = m.id AND s.attestation_type = 'pqc_registry') as pqc_sigs
+           FROM watchlist w
+           LEFT JOIN models m ON m.slug = w.slug
+           LEFT JOIN hndl_assessments h ON h.model_id = m.id
+           LEFT JOIN hndl_scans hs ON hs.hf_repo_id = m.hf_repo_id
+           WHERE w.user_id = ?
+           ORDER BY w.added_at DESC
+           LIMIT 10`,
+      )
+      .bind(dbUser.id)
+      .all<any>();
+    watchlist = wl.results || [];
   }
 }
 
-// CNSA 2.0 deadline: January 1, 2027
+// Platform Pulse — live stats across the whole marketplace
+if (db) {
+  try {
+    const [
+      models, datasets, tools, agents,
+      pqcSigs, totalSigs, blocks, entries,
+      entries24h, critical, high,
+      lastSync, lastActivity,
+    ] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as c FROM models WHERE category='model' OR category IS NULL`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM models WHERE category='dataset'`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM models WHERE category='tool'`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM agents`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM signatures WHERE attestation_type='pqc_registry'`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM signatures`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM chain_blocks`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM transparency_log`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM transparency_log WHERE timestamp > datetime('now','-1 day')`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM hndl_assessments WHERE risk_level='CRITICAL'`).first<{ c: number }>(),
+      db.prepare(`SELECT COUNT(*) as c FROM hndl_assessments WHERE risk_level='HIGH'`).first<{ c: number }>(),
+      db.prepare(`SELECT timestamp FROM transparency_log WHERE action LIKE 'cron:%' ORDER BY id DESC LIMIT 1`).first<{ timestamp: string }>(),
+      db.prepare(`SELECT timestamp FROM transparency_log ORDER BY id DESC LIMIT 1`).first<{ timestamp: string }>(),
+    ]);
+    platformPulse = {
+      models: models?.c ?? 0,
+      datasets: datasets?.c ?? 0,
+      tools: tools?.c ?? 0,
+      agents: agents?.c ?? 0,
+      pqc_signatures: pqcSigs?.c ?? 0,
+      total_signatures: totalSigs?.c ?? 0,
+      blocks: blocks?.c ?? 0,
+      transparency_entries: entries?.c ?? 0,
+      entries_last_24h: entries24h?.c ?? 0,
+      hndl_critical: critical?.c ?? 0,
+      hndl_high: high?.c ?? 0,
+      last_sync: lastSync?.timestamp ?? '',
+      last_activity: lastActivity?.timestamp ?? '',
+    };
+
+    // Public feed fallback (used only when user's own activity is empty)
+    if (dbUser && activity.length === 0) {
+      const pf = await db
+        .prepare(
+          `SELECT action, target_id, timestamp FROM transparency_log
+             WHERE action NOT LIKE 'cron:%'
+             ORDER BY id DESC LIMIT 6`,
+        )
+        .all<any>();
+      publicFeed = pf.results || [];
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// CNSA 2.0 deadline
 const cnsaDeadline = new Date('2027-01-01T00:00:00Z');
 const now = new Date();
 const daysRemaining = Math.max(0, Math.ceil((cnsaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 const totalDays = Math.ceil((cnsaDeadline.getTime() - new Date('2025-01-01').getTime()) / (1000 * 60 * 60 * 24));
 const cnsaProgress = Math.min(100, Math.max(0, Math.round(((totalDays - daysRemaining) / totalDays) * 100)));
 
-// HNDL alerts: count of HIGH or CRITICAL risk models
-const hndlAlerts = userModels.filter((m: any) => {
-  const level = (m.risk_level || '').toUpperCase();
+// HNDL alerts — from watchlist first, fall back to userModels
+const watchedAlerts = watchlist.filter((w: any) => {
+  const level = String(w.risk_level || w.hs_risk || '').toUpperCase();
   return level === 'HIGH' || level === 'CRITICAL';
-}).length;
+});
+const ownedAlerts = userModels.filter((m: any) => {
+  const level = String(m.risk_level || '').toUpperCase();
+  return level === 'HIGH' || level === 'CRITICAL';
+});
+const hndlAlerts = watchedAlerts.length + ownedAlerts.length;
 
-// Current date formatted
 const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-// Checklist state
 const hasModels = stats.modelCount > 0;
 const hasAgents = stats.agentCount > 0;
 const hasVerifications = stats.verificationCount > 0;
+const hasWatchlist = watchlist.length > 0;
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+function timeAgo(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const t = new Date(dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z').getTime();
+  if (isNaN(t)) return '';
+  const diff = Date.now() - t;
   const mins = Math.floor(diff / 60_000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
@@ -50,6 +152,25 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function riskTint(level: string) {
+  const L = (level || '').toUpperCase();
+  if (L === 'CRITICAL') return 'text-red-400';
+  if (L === 'HIGH') return 'text-orange-400';
+  if (L === 'MEDIUM') return 'text-yellow-400';
+  if (L === 'LOW') return 'text-quantum';
+  return 'text-gray-500';
+}
+
+function actionPill(action: string) {
+  if (action.includes('pqc_signed') || action === 'model:signed') return { icon: '✍', class: 'text-emerald-400' };
+  if (action.includes('submitted') || action.includes('created')) return { icon: '＋', class: 'text-electric' };
+  if (action.includes('dataset:')) return { icon: '▤', class: 'text-violet-400' };
+  if (action.includes('agent:')) return { icon: '◉', class: 'text-cyan-400' };
+  if (action.includes('chain:') || action.includes('block:') || action.includes('manifest:')) return { icon: '⛓', class: 'text-amber-400' };
+  if (action.includes('verif')) return { icon: '✓', class: 'text-blue-400' };
+  return { icon: '•', class: 'text-gray-500' };
 }
 ---
 
@@ -64,7 +185,7 @@ function timeAgo(dateStr: string): string {
     <div class="flex items-center gap-2">
       <span class="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-400">
         <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        CNSA 2.0 deadline: {daysRemaining} days remaining
+        CNSA 2.0 deadline: {daysRemaining} days
       </span>
     </div>
   </div>
@@ -77,7 +198,7 @@ function timeAgo(dateStr: string): string {
         <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-electric transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
       </div>
       <p class="text-xl font-bold text-white font-mono">{stats.modelCount}</p>
-      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stats.modelCount > 0 ? 'View models' : 'Push your first model'} &rarr;</p>
+      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stats.modelCount > 0 ? 'View models' : 'Push your first'} →</p>
     </a>
     <a href="/dashboard/agents" class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 hover:bg-navy-700 transition-all">
       <div class="flex items-center justify-between mb-1">
@@ -85,24 +206,24 @@ function timeAgo(dateStr: string): string {
         <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-electric transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
       </div>
       <p class="text-xl font-bold text-white font-mono">{stats.agentCount}</p>
-      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stats.agentCount > 0 ? 'View agents' : 'Register an agent'} &rarr;</p>
+      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">{stats.agentCount > 0 ? 'View agents' : 'Register one'} →</p>
     </a>
-    <a href="/dashboard/models" class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 hover:bg-navy-700 transition-all">
+    <a href="#watchlist" class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3 hover:border-electric/20 hover:bg-navy-700 transition-all">
       <div class="flex items-center justify-between mb-1">
-        <span class="text-[10px] text-gray-500 uppercase tracking-wider">Verifications</span>
-        <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-electric transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+        <span class="text-[10px] text-gray-500 uppercase tracking-wider">Watchlist</span>
+        <svg class="h-3.5 w-3.5 text-gray-600 group-hover:text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
       </div>
-      <p class="text-xl font-bold text-white font-mono">{stats.verificationCount}</p>
-      <p class="text-[10px] text-electric opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">View details &rarr;</p>
+      <p class="text-xl font-bold text-white font-mono">{watchlist.length}</p>
+      <p class="text-[10px] text-gray-600 mt-0.5">{watchlist.length > 0 ? 'Models you track' : 'Star any model'}</p>
     </a>
-    <div class="group rounded-lg border border-white/5 bg-navy-800 px-4 py-3" class:list={[hndlAlerts > 0 ? 'border-amber-500/20' : '']}>
+    <a href="#alerts" class={`group rounded-lg border px-4 py-3 transition-all ${hndlAlerts > 0 ? 'border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10' : 'border-white/5 bg-navy-800 hover:bg-navy-700'}`}>
       <div class="flex items-center justify-between mb-1">
         <span class="text-[10px] text-gray-500 uppercase tracking-wider">HNDL Alerts</span>
         <svg class={`h-3.5 w-3.5 ${hndlAlerts > 0 ? 'text-amber-400' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
       </div>
       <p class={`text-xl font-bold font-mono ${hndlAlerts > 0 ? 'text-amber-400' : 'text-white'}`}>{hndlAlerts}</p>
-      <p class="text-[10px] text-gray-600 mt-0.5">{hndlAlerts > 0 ? `${hndlAlerts} HIGH+ risk` : 'No alerts'}</p>
-    </div>
+      <p class="text-[10px] text-gray-600 mt-0.5">{hndlAlerts > 0 ? 'HIGH+ risk — see below' : 'No active alerts'}</p>
+    </a>
   </div>
 
   <!-- Two Column Layout -->
@@ -111,72 +232,181 @@ function timeAgo(dateStr: string): string {
     <!-- LEFT COLUMN (wider) -->
     <div class="lg:col-span-2 space-y-5">
 
-      <!-- Quick Actions -->
+      <!-- Quick Actions (expanded 6-tile grid) -->
       <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
         <div class="px-4 py-2.5 border-b border-white/5">
           <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Quick Actions</h2>
         </div>
-        <div class="grid grid-cols-2 gap-px bg-white/[0.03]">
-          <a href="/docs/quickstart" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-electric/10 text-electric group-hover:bg-electric/20 transition-colors flex-shrink-0">
-                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-px bg-white/[0.03]">
+          <a href="/scan" class="bg-navy-800 p-3.5 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-electric/10 text-electric group-hover:bg-electric/20 transition-colors flex-shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </div>
-              <div>
-                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Push Model</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Sign and publish a model</p>
-              </div>
-            </div>
-          </a>
-          <a href="/dashboard/agents" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-quantum/10 text-quantum group-hover:bg-quantum/20 transition-colors flex-shrink-0">
-                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Register Agent</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Create a PQC-authenticated agent</p>
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white">Scan a model</p>
+                <p class="text-[10px] text-gray-500 mt-0.5 truncate">HNDL risk assessment</p>
               </div>
             </div>
           </a>
-          <a href="/dashboard/migrate" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 transition-colors flex-shrink-0">
-                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          <a href="/compliance" class="bg-navy-800 p-3.5 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400 group-hover:bg-violet-500/20 transition-colors flex-shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
               </div>
-              <div>
-                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Run Migration</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Analyze PQC migration readiness</p>
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white">Compliance PDF</p>
+                <p class="text-[10px] text-gray-500 mt-0.5 truncate">Signed report generator</p>
               </div>
             </div>
           </a>
-          <button id="sync-hf-btn" class="bg-navy-800 p-4 hover:bg-navy-700 transition-colors group text-left w-full">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors flex-shrink-0">
-                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          <a href="/badge" class="bg-navy-800 p-3.5 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-500/10 text-yellow-400 group-hover:bg-yellow-500/20 transition-colors flex-shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
-              <div>
-                <p class="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">Sync HuggingFace</p>
-                <p id="sync-status" class="text-[10px] text-gray-500 mt-0.5">Sync top models from HF</p>
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white">Embed a badge</p>
+                <p class="text-[10px] text-gray-500 mt-0.5 truncate">README / blog snippets</p>
               </div>
             </div>
-          </button>
+          </a>
+          <a href="/docs/quickstart" class="bg-navy-800 p-3.5 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-quantum/10 text-quantum group-hover:bg-quantum/20 transition-colors flex-shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white">Push a model</p>
+                <p class="text-[10px] text-gray-500 mt-0.5 truncate">Sign via quantumshield</p>
+              </div>
+            </div>
+          </a>
+          <a href="/dashboard/agents" class="bg-navy-800 p-3.5 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20 transition-colors flex-shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white">Register agent</p>
+                <p class="text-[10px] text-gray-500 mt-0.5 truncate">Create PQ-AID identity</p>
+              </div>
+            </div>
+          </a>
+          <a href="/dashboard/migrate" class="bg-navy-800 p-3.5 hover:bg-navy-700 transition-colors group">
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20 transition-colors flex-shrink-0">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-200 group-hover:text-white">Run migration</p>
+                <p class="text-[10px] text-gray-500 mt-0.5 truncate">Scan repo for classical crypto</p>
+              </div>
+            </div>
+          </a>
         </div>
       </div>
 
-      <!-- Recent Activity -->
+      <!-- Watchlist -->
+      <div id="watchlist" class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.922-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.196-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Watchlist</h2>
+            {watchlist.length > 0 && <span class="text-[10px] text-gray-600">({watchlist.length})</span>}
+          </div>
+          <a href="/models" class="text-[10px] text-electric hover:underline">Browse models →</a>
+        </div>
+        {watchlist.length > 0 ? (
+          <div class="divide-y divide-white/[0.03]">
+            {watchlist.map((w: any) => {
+              const risk = w.risk_level || w.hs_risk || '';
+              const score = w.risk_score || w.hs_score;
+              return (
+                <div class="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.02] transition-colors group">
+                  <a href={`/models/${w.slug}`} class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-xs font-bold text-gray-400 flex-shrink-0">
+                      {w.author?.[0]?.toUpperCase() || w.slug?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-200 group-hover:text-white truncate">
+                        {w.author && w.name ? `${w.author}/${w.name}` : w.slug}
+                      </p>
+                      <div class="flex items-center gap-3 text-[10px] text-gray-600 mt-0.5">
+                        <span>{risk ? `HNDL: ${risk}${score ? ` (${score})` : ''}` : 'No risk data'}</span>
+                        {w.pqc_sigs > 0 && <span class="text-quantum">· {w.pqc_sigs} PQC sig</span>}
+                        <span>· added {timeAgo(w.added_at)}</span>
+                      </div>
+                    </div>
+                  </a>
+                  <div class="flex items-center gap-2">
+                    {risk && (
+                      <span class={`text-[10px] font-bold uppercase ${riskTint(risk)}`}>{risk}</span>
+                    )}
+                    <button
+                      data-unwatch-slug={w.slug}
+                      class="unwatch-btn text-gray-600 hover:text-red-400 transition-colors p-1"
+                      title="Remove from watchlist"
+                    >
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div class="px-4 py-8 text-center">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/10 mx-auto mb-3">
+              <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+            </div>
+            <p class="text-sm text-gray-300 mb-1">Star models to watch them</p>
+            <p class="text-xs text-gray-500 max-w-sm mx-auto mb-3">Click the <strong class="text-yellow-400">Watch</strong> button on any model page. Their HNDL scores show up here, live.</p>
+            <a href="/models" class="inline-flex items-center gap-1.5 rounded-md bg-electric/10 border border-electric/20 px-3 py-1.5 text-xs font-medium text-electric hover:bg-electric/20 transition-colors">
+              Browse models →
+            </a>
+          </div>
+        )}
+      </div>
+
+      <!-- HNDL Alerts drill-down -->
+      {hndlAlerts > 0 && (
+        <div id="alerts" class="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-amber-500/10 flex items-center gap-2">
+            <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+            <h2 class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Active HNDL Alerts ({hndlAlerts})</h2>
+          </div>
+          <div class="divide-y divide-amber-500/[0.06]">
+            {[...watchedAlerts, ...ownedAlerts].slice(0, 6).map((m: any) => {
+              const risk = String(m.risk_level || m.hs_risk || '').toUpperCase();
+              return (
+                <a href={`/models/${m.slug}`} class="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-500/5 transition-colors group">
+                  <span class={`text-[10px] font-bold uppercase ${riskTint(risk)} w-16 flex-shrink-0`}>{risk}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-200 truncate group-hover:text-white">{m.author}/{m.name}</p>
+                    <p class="text-[10px] text-gray-500 mt-0.5">Shelf life ~{m.shelf_life_years || '?'} years · {(m.downloads || 0).toLocaleString()} downloads</p>
+                  </div>
+                  <a href={`/compliance?slug=${m.slug}`} class="text-[10px] text-electric hover:underline flex-shrink-0" onclick="event.stopPropagation()">Generate report →</a>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <!-- Recent Activity (with public fallback) -->
       <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your Recent Activity</h2>
-          {activity.length > 0 && (
-            <a href="/transparency" class="text-[10px] text-electric hover:underline">View all</a>
-          )}
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            {activity.length > 0 ? 'Your Recent Activity' : 'Platform Activity'}
+          </h2>
+          <a href="/audit" class="text-[10px] text-electric hover:underline">View audit log →</a>
         </div>
         {activity.length > 0 ? (
           <div class="divide-y divide-white/[0.03]">
-            {activity.map((entry: any, i: number) => (
-              <div class={`flex items-center gap-3 px-4 py-3 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
-                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-electric/10 text-electric flex-shrink-0">
+            {activity.slice(0, 6).map((entry: any, i: number) => (
+              <div class={`flex items-center gap-3 px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-electric/10 text-electric flex-shrink-0 text-sm">
                   <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -189,70 +419,31 @@ function timeAgo(dateStr: string): string {
               </div>
             ))}
           </div>
+        ) : publicFeed.length > 0 ? (
+          <>
+            <div class="px-4 py-2 bg-white/[0.01] border-b border-white/[0.03]">
+              <p class="text-[10px] text-gray-500">You have no activity yet — showing recent platform-wide events.</p>
+            </div>
+            <div class="divide-y divide-white/[0.03]">
+              {publicFeed.map((entry: any, i: number) => {
+                const pill = actionPill(entry.action);
+                return (
+                  <div class={`flex items-center gap-3 px-4 py-2.5 ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                    <span class={`text-sm ${pill.class} w-5 text-center flex-shrink-0`}>{pill.icon}</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs text-gray-300 truncate"><span class={pill.class}>{entry.action}</span></p>
+                      <p class="text-[10px] text-gray-600 font-mono truncate mt-0.5">{entry.target_id}</p>
+                    </div>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0">{timeAgo(entry.timestamp)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <div class="px-4 py-10 text-center">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 mx-auto mb-3">
-              <svg class="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
             <p class="text-sm text-gray-400 mb-1">No activity yet</p>
-            <p class="text-xs text-gray-600 max-w-xs mx-auto">Get started by pushing your first model or registering an agent.</p>
-            <div class="flex items-center justify-center gap-2 mt-4">
-              <a href="/docs/quickstart" class="inline-flex items-center gap-1.5 rounded-md bg-electric/10 border border-electric/20 px-2.5 py-1 text-xs font-medium text-electric hover:bg-electric/20 transition-colors">
-                Get Started
-              </a>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <!-- PQC Migration Status -->
-      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">PQC Migration Status</h2>
-          {userModels.length > 0 && (
-            <a href="/dashboard/migrate" class="text-[10px] text-electric hover:underline">Run analysis</a>
-          )}
-        </div>
-        {userModels.length > 0 ? (
-          <div class="p-4">
-            <div class="grid grid-cols-3 gap-3">
-              {(() => {
-                const critical = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'CRITICAL').length;
-                const high = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'HIGH').length;
-                const medium = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'MEDIUM').length;
-                const low = userModels.filter((m: any) => (m.risk_level || '').toUpperCase() === 'LOW').length;
-                const unassessed = userModels.filter((m: any) => !m.risk_level).length;
-                return (
-                  <>
-                    <div class="rounded-lg border border-white/5 bg-navy-900 p-3 text-center">
-                      <p class="text-lg font-bold font-mono text-red-400">{critical}</p>
-                      <p class="text-[10px] text-gray-500 mt-0.5">Critical</p>
-                    </div>
-                    <div class="rounded-lg border border-white/5 bg-navy-900 p-3 text-center">
-                      <p class="text-lg font-bold font-mono text-orange-400">{high}</p>
-                      <p class="text-[10px] text-gray-500 mt-0.5">High</p>
-                    </div>
-                    <div class="rounded-lg border border-white/5 bg-navy-900 p-3 text-center">
-                      <p class="text-lg font-bold font-mono text-emerald-400">{low + medium}</p>
-                      <p class="text-[10px] text-gray-500 mt-0.5">Low/Medium</p>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-            {(() => {
-              const unassessed = userModels.filter((m: any) => !m.risk_level).length;
-              return unassessed > 0 ? (
-                <p class="text-[10px] text-gray-500 mt-3">{unassessed} model{unassessed > 1 ? 's' : ''} not yet assessed. <a href="/dashboard/migrate" class="text-electric hover:underline">Run HNDL analysis</a></p>
-              ) : null;
-            })()}
-          </div>
-        ) : (
-          <div class="px-4 py-8 text-center">
-            <p class="text-xs text-gray-500">No models analyzed yet.</p>
-            <a href="/dashboard/migrate" class="inline-flex items-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors mt-3">
-              Analyze Risk
-            </a>
+            <p class="text-xs text-gray-600 max-w-xs mx-auto">The platform is just waking up. Check back soon.</p>
           </div>
         )}
       </div>
@@ -261,48 +452,101 @@ function timeAgo(dateStr: string): string {
     <!-- RIGHT COLUMN (narrower) -->
     <div class="space-y-5">
 
-      <!-- Getting Started Checklist -->
+      <!-- Platform Pulse -->
       <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
-        <div class="px-4 py-2.5 border-b border-white/5">
-          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Getting Started</h2>
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Platform Pulse</h2>
+          </div>
+          <span class="text-[10px] text-gray-600">live</span>
         </div>
-        <div class="p-4 space-y-2.5">
-          {[
-            { done: false, label: 'Install CLI', detail: 'pip install quantumshield', href: '/docs/quickstart' },
-            { done: !!user, label: 'Authenticate', detail: 'quantumshield login', href: '/docs/quickstart' },
-            { done: hasAgents, label: 'Create signing identity', detail: 'Register a PQC agent', href: '/dashboard/agents' },
-            { done: hasModels, label: 'Push your first model', detail: 'Sign and publish a model', href: '/docs/quickstart' },
-            { done: hasVerifications, label: 'Verify a model', detail: 'Run verification on a model', href: '/models' },
-          ].map((item) => (
-            <a href={item.href} class="flex items-start gap-2.5 group">
-              <div class={`flex h-4.5 w-4.5 items-center justify-center rounded-full border mt-0.5 flex-shrink-0 ${item.done ? 'bg-emerald-500/20 border-emerald-500/30' : 'border-white/10 bg-white/5'}`}>
-                {item.done ? (
-                  <svg class="h-2.5 w-2.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                ) : (
-                  <span class="h-1.5 w-1.5 rounded-full bg-gray-600" />
-                )}
-              </div>
-              <div>
-                <p class={`text-xs font-medium ${item.done ? 'text-gray-500 line-through' : 'text-gray-300 group-hover:text-white'} transition-colors`}>{item.label}</p>
-                <p class="text-[10px] text-gray-600 mt-0.5">{item.detail}</p>
-              </div>
-            </a>
-          ))}
-        </div>
-        <div class="px-4 py-2.5 border-t border-white/5 bg-white/[0.01]">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] text-gray-500">{[false, !!user, hasAgents, hasModels, hasVerifications].filter(Boolean).length}/5 complete</span>
-            <div class="w-20 h-1 rounded-full bg-white/5 overflow-hidden">
-              <div class="h-full rounded-full bg-electric transition-all" style={`width: ${([false, !!user, hasAgents, hasModels, hasVerifications].filter(Boolean).length / 5) * 100}%`} />
+        <div class="p-4 space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <p class="text-lg font-bold font-mono text-white">{platformPulse.models.toLocaleString()}</p>
+              <p class="text-[10px] text-gray-500 uppercase tracking-wider">Models</p>
+            </div>
+            <div>
+              <p class="text-lg font-bold font-mono text-white">{platformPulse.datasets.toLocaleString()}</p>
+              <p class="text-[10px] text-gray-500 uppercase tracking-wider">Datasets</p>
+            </div>
+            <div>
+              <p class="text-lg font-bold font-mono text-quantum">{platformPulse.pqc_signatures.toLocaleString()}</p>
+              <p class="text-[10px] text-gray-500 uppercase tracking-wider">PQC Signatures</p>
+            </div>
+            <div>
+              <p class="text-lg font-bold font-mono text-amber-400">{platformPulse.blocks.toLocaleString()}</p>
+              <p class="text-[10px] text-gray-500 uppercase tracking-wider">Chain Blocks</p>
             </div>
           </div>
+          <div class="pt-3 border-t border-white/5 space-y-1.5">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="text-gray-500">Entries (24h)</span>
+              <span class="font-mono text-white">{platformPulse.entries_last_24h.toLocaleString()}</span>
+            </div>
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="text-gray-500">Critical/High HNDL</span>
+              <span class="font-mono">
+                <span class="text-red-400">{platformPulse.hndl_critical}</span>
+                <span class="text-gray-600">/</span>
+                <span class="text-orange-400">{platformPulse.hndl_high}</span>
+              </span>
+            </div>
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="text-gray-500">Last sync</span>
+              <span class="font-mono text-gray-400">{timeAgo(platformPulse.last_sync) || '—'}</span>
+            </div>
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="text-gray-500">Last activity</span>
+              <span class="font-mono text-gray-400">{timeAgo(platformPulse.last_activity) || '—'}</span>
+            </div>
+          </div>
+          <a href="/api/v1/stats" target="_blank" rel="noopener" class="flex items-center justify-center gap-1 text-[10px] text-gray-500 hover:text-electric transition-colors pt-1">
+            Raw JSON →
+          </a>
         </div>
       </div>
+
+      <!-- Getting Started (only show if not complete) -->
+      {(!hasWatchlist || !hasAgents || !hasModels || !hasVerifications) && (
+        <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
+          <div class="px-4 py-2.5 border-b border-white/5">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Getting Started</h2>
+          </div>
+          <div class="p-4 space-y-2.5">
+            {[
+              { done: !!user, label: 'Sign in with GitHub', detail: 'Authenticated', href: '/api/auth/login' },
+              { done: hasWatchlist, label: 'Watch a model', detail: 'Track HNDL score changes', href: '/models' },
+              { done: hasAgents, label: 'Create a signing identity', detail: 'Register a PQC agent', href: '/dashboard/agents' },
+              { done: hasModels, label: 'Push your first model', detail: 'Sign and publish', href: '/docs/quickstart' },
+              { done: hasVerifications, label: 'Run a verification', detail: 'Verify a signed model', href: '/models' },
+            ].map((item) => (
+              <a href={item.href} class="flex items-start gap-2.5 group">
+                <div class={`flex h-4 w-4 items-center justify-center rounded-full border mt-0.5 flex-shrink-0 ${item.done ? 'bg-emerald-500/20 border-emerald-500/30' : 'border-white/10 bg-white/5'}`}>
+                  {item.done ? (
+                    <svg class="h-2.5 w-2.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <span class="h-1.5 w-1.5 rounded-full bg-gray-600" />
+                  )}
+                </div>
+                <div>
+                  <p class={`text-xs font-medium ${item.done ? 'text-gray-500 line-through' : 'text-gray-300 group-hover:text-white'} transition-colors`}>{item.label}</p>
+                  <p class="text-[10px] text-gray-600 mt-0.5">{item.detail}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <!-- CNSA 2.0 Compliance -->
       <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
         <div class="px-4 py-2.5 border-b border-white/5">
-          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">CNSA 2.0 Compliance</h2>
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">CNSA 2.0 Countdown</h2>
         </div>
         <div class="p-4">
           <div class="flex items-center justify-between mb-2">
@@ -314,7 +558,7 @@ function timeAgo(dateStr: string): string {
           </div>
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-lg font-bold text-white font-mono">{daysRemaining}</p>
+              <p class="text-lg font-bold text-white font-mono">{daysRemaining.toLocaleString()}</p>
               <p class="text-[10px] text-gray-500">days remaining</p>
             </div>
             <div class="text-right">
@@ -322,34 +566,7 @@ function timeAgo(dateStr: string): string {
               <p class="text-xs text-gray-400">Jan 1, 2027</p>
             </div>
           </div>
-          <a href="/dashboard/compliance" class="mt-3 flex items-center justify-center gap-1.5 rounded-md bg-white/5 border border-white/10 px-3 py-1.5 text-[10px] font-medium text-gray-400 hover:bg-white/10 hover:text-white transition-colors w-full">
-            Check Compliance Status
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </a>
         </div>
-      </div>
-
-      <!-- Transparency Log -->
-      <div class="rounded-lg border border-white/5 bg-navy-800 overflow-hidden">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Transparency Log</h2>
-          <a href="/transparency" class="text-[10px] text-electric hover:underline">View Full Log</a>
-        </div>
-        {activity.length > 0 ? (
-          <div class="divide-y divide-white/[0.03]">
-            {activity.slice(0, 3).map((entry: any) => (
-              <div class="px-4 py-2.5">
-                <p class="text-[11px] text-gray-300 truncate">{entry.action}</p>
-                {entry.target && <p class="text-[10px] text-gray-600 font-mono truncate mt-0.5">{entry.target}</p>}
-                <p class="text-[10px] text-gray-600 mt-0.5">{entry.created_at ? timeAgo(entry.created_at) : ''}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div class="px-4 py-6 text-center">
-            <p class="text-[11px] text-gray-600">No log entries yet.</p>
-          </div>
-        )}
       </div>
 
       <!-- Resources -->
@@ -357,57 +574,52 @@ function timeAgo(dateStr: string): string {
         <div class="px-4 py-2.5 border-b border-white/5">
           <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Resources</h2>
         </div>
-        <div class="p-3 space-y-1">
-          <a href="/docs" class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5 transition-colors group">
+        <div class="p-2 space-y-0.5">
+          <a href="/docs" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors group">
             <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-            <div>
-              <p class="text-xs text-gray-300 group-hover:text-white transition-colors">Documentation</p>
-              <p class="text-[10px] text-gray-600">Guides and reference</p>
-            </div>
+            <span class="text-xs text-gray-300 group-hover:text-white">Documentation</span>
           </a>
-          <a href="/docs/quickstart" class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5 transition-colors group">
-            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            <div>
-              <p class="text-xs text-gray-300 group-hover:text-white transition-colors">CLI Quickstart</p>
-              <p class="text-[10px] text-gray-600">Install and configure</p>
-            </div>
+          <a href="/docs/quickstart" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <span class="text-xs text-gray-300 group-hover:text-white">CLI Quickstart</span>
           </a>
-          <a href="/docs/api" class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5 transition-colors group">
-            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-            <div>
-              <p class="text-xs text-gray-300 group-hover:text-white transition-colors">API Reference</p>
-              <p class="text-[10px] text-gray-600">REST endpoints and schemas</p>
-            </div>
+          <a href="/chain" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            <span class="text-xs text-gray-300 group-hover:text-white">PQC Block Chain</span>
+          </a>
+          <a href="/audit" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span class="text-xs text-gray-300 group-hover:text-white">Transparency Log</span>
+          </a>
+          <a href="https://github.com/dyber-pqc/QuantaMrkt" target="_blank" rel="noopener" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors group">
+            <svg class="h-3.5 w-3.5 text-gray-500 group-hover:text-electric transition-colors flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"/></svg>
+            <span class="text-xs text-gray-300 group-hover:text-white">GitHub repo</span>
           </a>
         </div>
       </div>
     </div>
   </div>
+
   <script>
-    document.getElementById('sync-hf-btn')?.addEventListener('click', async () => {
-      const btn = document.getElementById('sync-hf-btn') as HTMLButtonElement;
-      const statusEl = document.getElementById('sync-status')!;
-      btn.disabled = true;
-      statusEl.textContent = 'Syncing...';
-      statusEl.className = 'text-[10px] text-electric mt-0.5';
-
-      try {
-        const res = await fetch('/api/sync/trigger', { method: 'POST' });
-        const data = await res.json();
-
-        if (data.error) {
-          statusEl.textContent = data.error;
-          statusEl.className = 'text-[10px] text-red-400 mt-0.5';
-        } else {
-          statusEl.textContent = `Done! ${data.created} created, ${data.updated} updated${data.errors?.length ? `, ${data.errors.length} errors` : ''}`;
-          statusEl.className = 'text-[10px] text-green-400 mt-0.5';
+    // Unwatch buttons
+    document.querySelectorAll<HTMLButtonElement>('.unwatch-btn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const slug = btn.getAttribute('data-unwatch-slug');
+        if (!slug) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/watchlist?slug=${encodeURIComponent(slug)}`, { method: 'DELETE' });
+          if (res.ok) {
+            // Remove the row from DOM
+            const row = btn.closest('div.flex.items-center');
+            row?.remove();
+          }
+        } catch {
+          btn.disabled = false;
         }
-      } catch (e) {
-        statusEl.textContent = 'Sync failed. Try again.';
-        statusEl.className = 'text-[10px] text-red-400 mt-0.5';
-      }
-
-      btn.disabled = false;
+      });
     });
   </script>
 </DashboardLayout>

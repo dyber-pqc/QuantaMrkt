@@ -256,8 +256,15 @@ const githubBase = githubBlobBase(model.source_url);
             <button id="verify-btn" data-slug={model.slug} class="rounded-lg border border-quantum/30 bg-quantum/10 text-xs text-quantum px-4 py-2 hover:bg-quantum/20 transition-colors font-medium">
               Verify
             </button>
-            <button class="rounded-lg border border-white/10 bg-white/5 text-xs text-gray-400 px-3 py-2 hover:bg-white/10 hover:text-white transition-colors" title="Report Issue">
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+            <button
+              id="watch-btn"
+              data-slug={model.slug}
+              data-kind={model.category || 'model'}
+              class="rounded-lg border border-white/10 bg-white/5 text-xs text-gray-400 px-3 py-2 hover:bg-white/10 hover:text-white transition-colors inline-flex items-center gap-1.5"
+              title="Watch this model"
+            >
+              <svg id="watch-icon" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+              <span id="watch-label">Watch</span>
             </button>
           </div>
         </div>
@@ -992,6 +999,71 @@ quantumshield verify {model.author}/{model.name}</pre>
       setTimeout(() => { btn.textContent = orig || ''; }, 1500);
     });
   });
+
+  // Watch / Unwatch button
+  const watchBtn = document.getElementById('watch-btn') as HTMLButtonElement | null;
+  const watchIcon = document.getElementById('watch-icon');
+  const watchLabel = document.getElementById('watch-label');
+
+  function applyWatchState(watched: boolean) {
+    if (!watchBtn || !watchLabel || !watchIcon) return;
+    if (watched) {
+      watchBtn.classList.remove('border-white/10', 'bg-white/5', 'text-gray-400');
+      watchBtn.classList.add('border-yellow-500/30', 'bg-yellow-500/10', 'text-yellow-400');
+      (watchIcon as any).setAttribute('fill', 'currentColor');
+      watchLabel.textContent = 'Watching';
+      watchBtn.title = 'Remove from watchlist';
+    } else {
+      watchBtn.classList.add('border-white/10', 'bg-white/5', 'text-gray-400');
+      watchBtn.classList.remove('border-yellow-500/30', 'bg-yellow-500/10', 'text-yellow-400');
+      (watchIcon as any).setAttribute('fill', 'none');
+      watchLabel.textContent = 'Watch';
+      watchBtn.title = 'Add to watchlist';
+    }
+  }
+
+  if (watchBtn) {
+    const wSlug = watchBtn.getAttribute('data-slug') || '';
+    const wKind = watchBtn.getAttribute('data-kind') || 'model';
+
+    // Init: check watch state
+    fetch(`/api/watchlist/check?slug=${encodeURIComponent(wSlug)}&kind=${wKind}`)
+      .then((r) => r.json())
+      .then((d: any) => {
+        if (d.authenticated === false) {
+          watchBtn.title = 'Sign in to watch';
+        } else {
+          applyWatchState(!!d.watched);
+        }
+      })
+      .catch(() => {});
+
+    watchBtn.addEventListener('click', async () => {
+      watchBtn.disabled = true;
+      try {
+        // Optimistically toggle visual state
+        const currentlyWatching = watchBtn.classList.contains('text-yellow-400');
+        if (currentlyWatching) {
+          await fetch(`/api/watchlist?slug=${encodeURIComponent(wSlug)}&kind=${wKind}`, { method: 'DELETE' });
+          applyWatchState(false);
+        } else {
+          const res = await fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: wSlug, kind: wKind }),
+          });
+          if (res.status === 401) {
+            watchBtn.title = 'Sign in to watch';
+            alert('Sign in with GitHub to add models to your watchlist.');
+          } else {
+            applyWatchState(true);
+          }
+        }
+      } finally {
+        watchBtn.disabled = false;
+      }
+    });
+  }
 
   // Use Model modal
   const useBtn = document.getElementById('use-model-btn');
