@@ -535,16 +535,12 @@ quantumshield verify {model.author}/{model.name}</pre>
                             )}
                             {node.isDir ? (
                               <span class="font-mono text-electric/80 font-medium">{node.name}</span>
-                            ) : githubBase ? (
-                              <a
-                                href={`${githubBase}/${node.path}`}
-                                target="_blank"
-                                rel="noopener"
-                                class="font-mono text-gray-300 hover:text-electric transition-colors"
-                                title={`View ${node.path} on GitHub`}
-                              >{node.name}</a>
                             ) : (
-                              <span class="font-mono text-gray-300">{node.name}</span>
+                              <a
+                                href={`/files/${model.slug}/${node.path}`}
+                                class="font-mono text-gray-300 hover:text-electric transition-colors"
+                                title={`View ${node.path}`}
+                              >{node.name}</a>
                             )}
                           </div>
                         </td>
