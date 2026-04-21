@@ -88,7 +88,19 @@
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-electric to-quantum bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #00d4ff, #00ff88);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* Fallback: if background-clip isn't supported, show a solid electric color */
+    background-color: transparent;
+  }
+  @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+    .gradient-text {
+      color: #00d4ff;
+      -webkit-text-fill-color: #00d4ff;
+    }
   }
 
   .section-heading {
