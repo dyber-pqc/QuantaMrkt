@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '30 */6 * * *'   # Every 6 hours at :30
   workflow_dispatch:           # Manual trigger
+    inputs:
+      force_regenerate:
+        description: 'Force regeneration of platform keypair'
+        required: false
+        default: 'false'
 
 jobs:
   sign:
@@ -34,75 +39,141 @@ jobs:
           pip install liboqs-python==0.14.1 httpx
           cd lib && pip install -e .
 
-      - name: Generate or load ML-DSA-87 keypair
-        id: keygen
+      - name: Load or provision ML-DSA-87 keypair
+        id: keys
         env:
-          PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
-          PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
-          GH_TOKEN: ${{ secrets.QUANTAMRKT_API_TOKEN }}
+          # Bootstrap fallbacks (used only if API has nothing)
+          BOOTSTRAP_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
+          BOOTSTRAP_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
+          # API keystore
+          QUANTAMRKT_API_URL: https://quantamrkt.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE_REGENERATE: ${{ github.event.inputs.force_regenerate }}
         run: |
-          python -c "
-          import os, oqs, subprocess, json
+          python <<'PY'
+          import os, sys, json, urllib.request, urllib.error
+          import oqs
 
-          pk_hex = os.environ.get('PLATFORM_ML_DSA_PUBLIC_KEY', '')
-          sk_hex = os.environ.get('PLATFORM_ML_DSA_PRIVATE_KEY', '')
+          API_URL = os.environ['QUANTAMRKT_API_URL']
+          CRON_SECRET = os.environ.get('CRON_SECRET', '')
+          FORCE = os.environ.get('FORCE_REGENERATE', 'false').lower() == 'true'
 
-          need_new_key = True
-          if pk_hex and sk_hex and len(pk_hex) > 100 and len(sk_hex) > 100:
+          if not CRON_SECRET:
+              print('ERROR: CRON_SECRET not set — cannot use platform keystore', flush=True)
+              sys.exit(1)
+
+          avail = oqs.get_enabled_sig_mechanisms()
+          alg = 'ML-DSA-87' if 'ML-DSA-87' in avail else 'Dilithium5'
+          print(f'Using algorithm: {alg}', flush=True)
+
+          def keypair_works(pk_hex: str, sk_hex: str) -> bool:
+              """Round-trip sign/verify with the given hex keys against current liboqs."""
               try:
                   pk = bytes.fromhex(pk_hex)
                   sk = bytes.fromhex(sk_hex)
-                  # Test that the key actually works with this liboqs version
-                  avail = oqs.get_enabled_sig_mechanisms()
-                  alg = 'Dilithium5' if 'Dilithium5' in avail else 'ML-DSA-87'
                   signer = oqs.Signature(alg, sk)
-                  msg = b'test message for key validation'
+                  msg = b'platform-key-validation'
                   sig = signer.sign(msg)
                   verifier = oqs.Signature(alg)
-                  if verifier.verify(msg, sig, pk):
-                      print(f'Keys loaded and verified with {alg} - ready to sign')
-                      need_new_key = False
-                  else:
-                      print('Key self-verification failed - generating new keypair')
-              except Exception as e:
-                  print(f'Key load failed ({e}) - generating new keypair')
+                  return verifier.verify(msg, sig, pk)
+              except Exception as exc:
+                  print(f'  → key validation failed: {exc}', flush=True)
+                  return False
 
-          if need_new_key:
-              print('Generating new ML-DSA-87 keypair...')
-              avail = oqs.get_enabled_sig_mechanisms()
-              alg = 'ML-DSA-87' if 'ML-DSA-87' in avail else 'Dilithium5'
-              print(f'Using algorithm: {alg}')
+          def fetch_from_api():
+              """GET /api/internal/platform-keys → (pk_hex, sk_hex) or (None, None)."""
+              req = urllib.request.Request(
+                  f'{API_URL}/api/internal/platform-keys',
+                  headers={'X-Cron-Secret': CRON_SECRET},
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      data = json.loads(resp.read())
+                      return data.get('public_key_hex'), data.get('private_key_hex')
+              except urllib.error.HTTPError as e:
+                  print(f'  → API fetch HTTP {e.code}: {e.read().decode()[:200]}', flush=True)
+              except Exception as e:
+                  print(f'  → API fetch failed: {e}', flush=True)
+              return None, None
+
+          def push_to_api(pk_hex: str, sk_hex: str) -> bool:
+              """POST keypair to platform keystore."""
+              body = json.dumps({
+                  'public_key_hex': pk_hex,
+                  'private_key_hex': sk_hex,
+              }).encode()
+              req = urllib.request.Request(
+                  f'{API_URL}/api/internal/platform-keys',
+                  data=body,
+                  method='POST',
+                  headers={
+                      'X-Cron-Secret': CRON_SECRET,
+                      'Content-Type': 'application/json',
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      print(f'  → API store HTTP {resp.status}', flush=True)
+                      return resp.status in (200, 201)
+              except Exception as e:
+                  print(f'  → API store failed: {e}', flush=True)
+                  return False
+
+          pk_hex = sk_hex = None
+
+          # 1. Try API keystore first (unless forcing regeneration)
+          if not FORCE:
+              print('Step 1: fetching keys from platform API keystore...', flush=True)
+              api_pk, api_sk = fetch_from_api()
+              if api_pk and api_sk and keypair_works(api_pk, api_sk):
+                  print('  ✓ Loaded compatible keypair from API', flush=True)
+                  pk_hex, sk_hex = api_pk, api_sk
+              else:
+                  print('  ✗ API keystore empty or incompatible', flush=True)
+
+          # 2. Try bootstrap secrets (one-time migration path)
+          if not pk_hex and not FORCE:
+              print('Step 2: trying bootstrap secrets...', flush=True)
+              boot_pk = os.environ.get('BOOTSTRAP_PUBLIC_KEY', '')
+              boot_sk = os.environ.get('BOOTSTRAP_PRIVATE_KEY', '')
+              if boot_pk and boot_sk and keypair_works(boot_pk, boot_sk):
+                  print('  ✓ Bootstrap secrets are compatible — migrating to API', flush=True)
+                  pk_hex, sk_hex = boot_pk, boot_sk
+                  push_to_api(pk_hex, sk_hex)
+              else:
+                  print('  ✗ Bootstrap secrets unusable (likely stale liboqs encoding)', flush=True)
+
+          # 3. Generate fresh keypair as last resort
+          if not pk_hex:
+              reason = 'forced regeneration' if FORCE else 'no compatible keypair found'
+              print(f'Step 3: generating fresh keypair ({reason})...', flush=True)
               signer = oqs.Signature(alg)
               pk = signer.generate_keypair()
               sk = signer.export_secret_key()
-
               pk_hex = pk.hex()
               sk_hex = sk.hex()
-
-              # Mask private key so it never appears in logs
               print(f'::add-mask::{sk_hex}')
+              print(f'  ✓ Generated {alg} keypair (pk={len(pk)}B, sk={len(sk)}B)', flush=True)
 
-              # Auto-save to GitHub secrets
-              repo = 'dyber-pqc/QuantaMrkt'
-              print('Saving keys to GitHub secrets...')
-              subprocess.run(['gh', 'secret', 'set', 'PLATFORM_ML_DSA_PUBLIC_KEY', '--repo', repo, '--body', pk_hex], check=True)
-              subprocess.run(['gh', 'secret', 'set', 'PLATFORM_ML_DSA_PRIVATE_KEY', '--repo', repo, '--body', sk_hex], check=True)
+              if push_to_api(pk_hex, sk_hex):
+                  print('  ✓ Persisted to API keystore — future runs will reuse', flush=True)
+              else:
+                  print('  ⚠ Could not persist to API — keys will be regenerated next run', flush=True)
 
-              # Also write to env so this same run can use them
-              with open(os.environ['GITHUB_ENV'], 'a') as f:
-                  f.write(f'PLATFORM_ML_DSA_PUBLIC_KEY={pk_hex}\n')
-                  f.write(f'PLATFORM_ML_DSA_PRIVATE_KEY={sk_hex}\n')
+          # Always mask private key, then export for downstream steps
+          print(f'::add-mask::{sk_hex}')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'PLATFORM_ML_DSA_PUBLIC_KEY={pk_hex}\n')
+              f.write(f'PLATFORM_ML_DSA_PRIVATE_KEY={sk_hex}\n')
 
-              print(f'Done. Public key ({len(pk)} bytes): {pk_hex[:60]}...')
-              print('Keys saved to secrets and exported for signing step.')
-          "
+          print(f'\nReady to sign. Public key ({len(pk_hex)//2} bytes):')
+          print(f'  {pk_hex[:80]}...', flush=True)
+          PY
 
       - name: Sign all models
         env:
           QUANTAMRKT_API_URL: https://quantamrkt.com
           QUANTAMRKT_API_TOKEN: ${{ secrets.QUANTAMRKT_API_TOKEN }}
-          PLATFORM_ML_DSA_PRIVATE_KEY: ${{ secrets.PLATFORM_ML_DSA_PRIVATE_KEY }}
-          PLATFORM_ML_DSA_PUBLIC_KEY: ${{ secrets.PLATFORM_ML_DSA_PUBLIC_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           python -m quantumshield.signing_service --sign-all
