@@ -1,9 +1,8 @@
 name: Hourly HuggingFace Sync
 
+# Scheduled runs are owned by GitLab CI (.gitlab-ci.yml).
+# This workflow stays available as a manual fallback / debug trigger.
 on:
-  schedule:
-    # Every hour at :15 past
-    - cron: '15 * * * *'
   workflow_dispatch:
 
 jobs:

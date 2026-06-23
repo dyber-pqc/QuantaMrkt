@@ -1,0 +1,123 @@
+# GitLab CI for QuantaMrkt scheduled jobs.
+#
+# Two pipeline schedules, configured in GitLab UI:
+#   Build → Pipeline schedules → New schedule
+#
+#   1. HF sync (hourly)
+#      Cron:        15 * * * *
+#      Variables:   SCHEDULE = hf-sync
+#
+#   2. PQC sign (every 6 hours)
+#      Cron:        30 */6 * * *
+#      Variables:   SCHEDULE = pqc-sign
+#
+# Required CI/CD variables (Settings → CI/CD → Variables, all Masked + Protected):
+#   CRON_SECRET            — auth for /api/cron/* and /api/internal/* endpoints
+#   QUANTAMRKT_API_TOKEN   — bearer token for the QuantaMrkt API (signing pushes)
+#
+# Optional (one-time migration only — safe to omit going forward):
+#   BOOTSTRAP_PUBLIC_KEY   — hex ML-DSA-87 pubkey to seed the API keystore
+#   BOOTSTRAP_PRIVATE_KEY  — hex ML-DSA-87 secret key to seed the API keystore
+#
+# Manual run: Build → Pipeline schedules → ▶ Play, or Build → Run pipeline
+# with a SCHEDULE=<name> variable.
+
+default:
+  image: python:3.12-slim-bookworm
+  interruptible: true
+
+variables:
+  QUANTAMRKT_API_URL: "https://quantamrkt.com"
+  GIT_DEPTH: "1"
+
+stages:
+  - sync
+  - sign
+
+# ---------------------------------------------------------------------------
+# Hourly HuggingFace sync — pings /api/cron/sync-all and prints the summary
+# ---------------------------------------------------------------------------
+hf-sync:
+  stage: sync
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE == "hf-sync"
+    - if: $CI_PIPELINE_SOURCE == "web" && $SCHEDULE == "hf-sync"
+  before_script:
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl jq ca-certificates >/dev/null
+  script:
+    - echo "Triggering sync at $(date -u)"
+    - |
+      response=$(curl -sS -w "\nHTTP_STATUS:%{http_code}" \
+        -X POST \
+        -H "X-Cron-Secret: $CRON_SECRET" \
+        -H "Content-Type: application/json" \
+        "$QUANTAMRKT_API_URL/api/cron/sync-all")
+
+      http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+      body=$(echo "$response" | sed '/HTTP_STATUS:/d')
+
+      echo "HTTP Status: $http_status"
+      echo "Response body:"
+      echo "$body" | head -60
+
+      if [ "$http_status" -ne 200 ]; then
+        echo "Sync failed with HTTP $http_status" >&2
+        exit 1
+      fi
+
+      created=$(echo "$body" | jq -r '.created // 0')
+      updated=$(echo "$body" | jq -r '.updated // 0')
+      minted=$(echo "$body" | jq -r '.minted // false')
+      duration=$(echo "$body" | jq -r '.duration_ms // 0')
+
+      echo ""
+      echo "── Sync Summary ────────────────────"
+      echo "  Models created : $created"
+      echo "  Models updated : $updated"
+      echo "  Block minted   : $minted"
+      echo "  Duration       : ${duration}ms"
+
+# ---------------------------------------------------------------------------
+# PQC signing — builds liboqs, runs the keystore resolver, signs all models
+# ---------------------------------------------------------------------------
+pqc-sign:
+  stage: sign
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE == "pqc-sign"
+    - if: $CI_PIPELINE_SOURCE == "web" && $SCHEDULE == "pqc-sign"
+  variables:
+    FORCE_REGENERATE: "false"
+  cache:
+    key: liboqs-0.14.0
+    paths:
+      - .cache/liboqs/
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends cmake ninja-build libssl-dev git ca-certificates build-essential >/dev/null
+    - |
+      if [ ! -f /usr/local/lib/liboqs.so ]; then
+        if [ -d .cache/liboqs ]; then
+          echo "Restoring cached liboqs build..."
+          cp -r .cache/liboqs/lib/* /usr/local/lib/
+          cp -r .cache/liboqs/include/* /usr/local/include/
+          ldconfig
+        else
+          echo "Building liboqs 0.14.0 from source..."
+          git clone --branch 0.14.0 --depth 1 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+          cd /tmp/liboqs && mkdir build && cd build
+          cmake -GNinja -DBUILD_SHARED_LIBS=ON ..
+          ninja
+          ninja install
+          ldconfig
+          cd "$CI_PROJECT_DIR"
+          mkdir -p .cache/liboqs/lib .cache/liboqs/include
+          cp -r /usr/local/lib/liboqs* .cache/liboqs/lib/ 2>/dev/null || true
+          cp -r /usr/local/include/oqs .cache/liboqs/include/ 2>/dev/null || true
+        fi
+      fi
+    - pip install --quiet liboqs-python==0.14.1 httpx
+    - pip install --quiet -e ./lib
+  script:
+    - python scripts/pqc_sign_setup.py
+    - . ./.pqc_env
+    - python -m quantumshield.signing_service --sign-all
