@@ -153,7 +153,7 @@ class PQCSigningService:
 
     def sign_all_models(self) -> dict[str, Any]:
         """Fetch every model from the QuantaMrkt API and sign it."""
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {"User-Agent": "QuantaMrkt-CI/1.0"}
         if API_TOKEN:
             headers["Authorization"] = f"Bearer {API_TOKEN}"
         cron_secret = os.environ.get("CRON_SECRET")

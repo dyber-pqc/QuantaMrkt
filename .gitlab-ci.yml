@@ -65,17 +65,20 @@ hf-sync:
         exit 1
       fi
 
-      created=$(echo "$body" | jq -r '.created // 0')
-      updated=$(echo "$body" | jq -r '.updated // 0')
-      minted=$(echo "$body" | jq -r '.minted // false')
+      m_created=$(echo "$body" | jq -r '.models.created // 0')
+      m_updated=$(echo "$body" | jq -r '.models.updated // 0')
+      d_created=$(echo "$body" | jq -r '.datasets.created // 0')
+      d_updated=$(echo "$body" | jq -r '.datasets.updated // 0')
+      minted=$(echo "$body" | jq -r '.block.minted // false')
+      block_num=$(echo "$body" | jq -r '.block.block_number // "—"')
       duration=$(echo "$body" | jq -r '.duration_ms // 0')
 
       echo ""
       echo "── Sync Summary ────────────────────"
-      echo "  Models created : $created"
-      echo "  Models updated : $updated"
-      echo "  Block minted   : $minted"
-      echo "  Duration       : ${duration}ms"
+      echo "  Models   : +$m_created new, $m_updated updated"
+      echo "  Datasets : +$d_created new, $d_updated updated"
+      echo "  Block    : minted=$minted (#$block_num)"
+      echo "  Duration : ${duration}ms"
 
 # ---------------------------------------------------------------------------
 # PQC signing — builds liboqs, runs the keystore resolver, signs all models

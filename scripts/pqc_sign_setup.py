@@ -117,7 +117,10 @@ def _keypair_works(alg: str, pk_hex: str, sk_hex: str) -> bool:
 def _fetch_from_api() -> tuple[str | None, str | None]:
     req = urllib.request.Request(
         f"{API_URL}/api/internal/platform-keys",
-        headers={"X-Cron-Secret": CRON_SECRET},
+        headers={
+            "X-Cron-Secret": CRON_SECRET,
+            "User-Agent": "QuantaMrkt-CI/1.0",
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -139,6 +142,7 @@ def _push_to_api(pk_hex: str, sk_hex: str) -> bool:
         headers={
             "X-Cron-Secret": CRON_SECRET,
             "Content-Type": "application/json",
+            "User-Agent": "QuantaMrkt-CI/1.0",
         },
     )
     try:

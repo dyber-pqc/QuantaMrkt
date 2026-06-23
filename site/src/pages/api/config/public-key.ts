@@ -3,12 +3,18 @@ import { getApiUser } from '../../../lib/api-auth';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const user = await getApiUser(locals, request);
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    // Accept X-Cron-Secret OR a signed-in user (same pattern as /api/models/:slug/sign)
+    const env = (locals as any).runtime?.env;
+    const cronProvided = request.headers.get('x-cron-secret');
+    const cronAuthed = !!cronProvided && !!env?.CRON_SECRET && cronProvided === env.CRON_SECRET;
+    if (!cronAuthed) {
+      const user = await getApiUser(locals, request);
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const body = (await request.json()) as { public_key_hex?: string };
