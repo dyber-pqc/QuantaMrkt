@@ -26,9 +26,19 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
   try {
     // -- Auth ----------------------------------------------------------------
-    const user = await getApiUser(locals, request);
-    if (!user) {
-      return json({ error: 'Unauthorized' }, 401);
+    // Two accepted auth mechanisms:
+    //   1. X-Cron-Secret    — scheduled signing pipeline (GitLab CI / cron)
+    //   2. Bearer/session   — interactive user signing via getApiUser
+    const env = (locals as any).runtime?.env;
+    const cronProvided = request.headers.get('x-cron-secret');
+    const cronAuthed = !!cronProvided && !!env?.CRON_SECRET && cronProvided === env.CRON_SECRET;
+
+    let user = null;
+    if (!cronAuthed) {
+      user = await getApiUser(locals, request);
+      if (!user) {
+        return json({ error: 'Unauthorized' }, 401);
+      }
     }
 
     // -- Params --------------------------------------------------------------
@@ -83,12 +93,14 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     await db.prepare('UPDATE models SET verified = 1, updated_at = ? WHERE id = ?').bind(now, model.id).run();
 
     // -- Activity log -------------------------------------------------------
-    await logActivity(db, {
-      userId: user.id,
-      action: 'model.pqc_signed',
-      target: slug,
-      details: `PQC signed with ${algorithm} by ${signer_did}`,
-    });
+    if (user) {
+      await logActivity(db, {
+        userId: user.id,
+        action: 'model.pqc_signed',
+        target: slug,
+        details: `PQC signed with ${algorithm} by ${signer_did}`,
+      });
+    }
 
     // -- Transparency log ---------------------------------------------------
     await appendLogEntry(db, {

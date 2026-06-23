@@ -156,6 +156,9 @@ class PQCSigningService:
         headers: dict[str, str] = {}
         if API_TOKEN:
             headers["Authorization"] = f"Bearer {API_TOKEN}"
+        cron_secret = os.environ.get("CRON_SECRET")
+        if cron_secret:
+            headers["X-Cron-Secret"] = cron_secret
 
         resp = httpx.get(f"{API_URL}/api/models?limit=200", headers=headers, timeout=30)
         resp.raise_for_status()
